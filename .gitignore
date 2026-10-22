@@ -1,0 +1,11 @@
+# Downloaded Odyssey upstream source and generated build outputs
+/odyssey-upstream/
+/cross-build-x86_64-aros/
+/build-odyssey/
+/OdysseyModern/build/
+
+# Generated compiler/cache artifacts
+__pycache__/
+*.py[cod]
+CMakeCache.txt
+CMakeFiles/
