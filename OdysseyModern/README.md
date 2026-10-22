@@ -25,7 +25,7 @@ On Linux/WSL with Docker, use:
 bash OdysseyModern/run-os4-docker.sh
 ```
 
-These wrappers use the AmigaGCConDocker GCC 11 image by default; override it with `ODYSSEY_OS4_DOCKER_IMAGE` on Linux or the `-Image` parameter on Windows. You can bypass Docker and run the SDK-backed script directly, from the repository root:
+These wrappers use the pinned `walkero/amigagccondocker:os4-gcc11-3.5.2` image by default; override it with `ODYSSEY_OS4_DOCKER_IMAGE` on Linux or the `-Image` parameter on Windows. You can bypass Docker and run the SDK-backed script directly, from the repository root:
 
 ```bash
 bash OdysseyModern/fetch-and-build-os4.sh
@@ -34,7 +34,7 @@ bash OdysseyModern/fetch-and-build-os4.sh
 The first goal is to collect real compiler errors and port the missing OS4 shims forward. Default `ODYSSEY_BUILD_PROFILE=balanced` uses `-O2`. For an experimental `-O3` build:
 
 ```bash
-ODYSSEY_BUILD_PROFILE=fast ./OdysseyModern/fetch-and-build-os4.sh
+ODYSSEY_BUILD_PROFILE=fast bash OdysseyModern/fetch-and-build-os4.sh
 ```
 
 Media is off by default for the first porting pass. Once all target dependencies are correctly installed, try it with `ODYSSEY_OS4_MEDIA=on`. Neither profile has been compiled or benchmarked in this environment, and neither is currently claimed to produce an OS4 executable.
