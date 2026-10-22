@@ -31,7 +31,7 @@ These wrappers use the pinned `walkero/amigagccondocker:os4-gcc11-3.5.2` image b
 bash OdysseyModern/fetch-and-build-os4.sh
 ```
 
-The first goal is to collect real configure/build errors and port the missing OS4 shims forward. The script automatically runs `prepare-os4-upstream.py` on a fresh or reset upstream `odyssey` checkout; it fails closed if expected source patterns have changed and preserves unrelated local edits. Its OS4 allocator currently uses page-aligned `AllocVecTags` memory and clears decommitted ranges instead of releasing physical pages, so it may retain more memory than a true virtual-memory backend. Guard pages are not implemented. Default `ODYSSEY_BUILD_PROFILE=balanced` uses `-O2`. For an experimental `-O3` build:
+The first goal is to collect real configure/build errors and port the missing OS4 shims forward. The baseline disables XSLT because the pinned AmigaGCConDocker SDK image does not include the target libxslt headers; install a target libxslt library and headers, then set `ODYSSEY_OS4_XSLT=on` to enable it. This keeps the baseline from failing before CMake because of that optional component. The script automatically runs `prepare-os4-upstream.py` on a fresh or reset upstream `odyssey` checkout; it fails closed if expected source patterns have changed and preserves unrelated local edits. Its OS4 allocator currently uses page-aligned `AllocVecTags` memory and clears decommitted ranges instead of releasing physical pages, so it may retain more memory than a true virtual-memory backend. Guard pages are not implemented. Default `ODYSSEY_BUILD_PROFILE=balanced` uses `-O2`. For an experimental `-O3` build:
 
 ```bash
 ODYSSEY_BUILD_PROFILE=fast bash OdysseyModern/fetch-and-build-os4.sh
