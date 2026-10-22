@@ -55,7 +55,7 @@ if [[ -n "$ICU_CPU_FLAGS" ]]; then
   ICU_TARGET_CFLAGS+=" $ICU_CPU_FLAGS"
   ICU_TARGET_CXXFLAGS+=" $ICU_CPU_FLAGS"
 fi
-printf 'ICU target optimization: -O%s; target CPU flags: %s\\n' "$ICU_OPT_LEVEL" "${ICU_CPU_FLAGS:-generic PPC}"
+printf 'ICU target optimization: -O%s; target CPU flags: %s\n' "$ICU_OPT_LEVEL" "${ICU_CPU_FLAGS:-generic PPC}"
 if [[ "$USE_CCACHE" == "1" ]]; then
   export CCACHE_DIR="${CCACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/odyssey-ccache}"
   mkdir -p "$CCACHE_DIR"
