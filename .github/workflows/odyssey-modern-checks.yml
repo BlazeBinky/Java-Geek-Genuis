@@ -23,9 +23,11 @@ jobs:
         with:
           python-version: "3.x"
       - name: Check Python syntax
-        run: python -m py_compile OdysseyModern/prepare-upstream.py OdysseyModern/tests/test_prepare_upstream.py
+        run: python -m py_compile OdysseyModern/prepare-upstream.py OdysseyModern/tests/test_prepare_upstream.py OdysseyModern/tests/check_html_scripts.py
       - name: Test downstream patch application
         run: python OdysseyModern/tests/test_prepare_upstream.py
+      - name: Check browser test JavaScript syntax
+        run: python OdysseyModern/tests/check_html_scripts.py
       - name: Check shell syntax
         run: |
           bash -n OdysseyModern/fetch-and-build-aros.sh
