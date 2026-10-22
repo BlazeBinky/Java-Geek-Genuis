@@ -27,6 +27,10 @@ jobs:
       - name: Test downstream patch application
         run: python OdysseyModern/tests/test_prepare_upstream.py
       - name: Check shell syntax
-        run: bash -n OdysseyModern/fetch-and-build-aros.sh
+        run: |
+          bash -n OdysseyModern/fetch-and-build-aros.sh
+          bash -n OdysseyModern/fetch-and-build-os4.sh
+      - name: Validate experimental OS4 CMake toolchain syntax
+        run: cmake -P OdysseyModern/toolchains/AMIGAOS4.cmake
       - name: Check whitespace errors
         run: git diff --check
