@@ -137,6 +137,19 @@ BUILD_TRIPLET="$(sh "$ICU_SOURCE_DIR/icu4c/source/config.guess")"
     --disable-shared --enable-static \
     --with-data-packaging=static \
     --disable-tests --disable-samples
+
+  # ICU 55.1's generated config/Makefile.inc includes its platform fragment
+  # from "$(pkgdatadir)/config/$(platform_make_fragment_name)". For a cross
+  # build, that is the install prefix's share/icu/55.1/config directory, but
+  # "make install" has not run yet. Staging mh-unknown only in the ICU source
+  # tree is therefore insufficient: pkgdataMakefile and stubdata fail while
+  # trying to include the fragment. Keep this copy in the build prefix before
+  # compiling; ICU's own make install can later replace/install it normally.
+  ICU_PKGDATA_DIR="$PREFIX/share/icu/55.1"
+  mkdir -p "$ICU_PKGDATA_DIR/config"
+  install -m 0644 "$ICU_SOURCE_DIR/icu4c/source/config/mh-unknown" "$ICU_PKGDATA_DIR/config/mh-unknown"
+  [[ -s "$ICU_PKGDATA_DIR/config/mh-unknown" ]] || fail "ICU target platform fragment was not staged: $ICU_PKGDATA_DIR/config/mh-unknown"
+
   make -j"${ODYSSEY_ICU_TARGET_JOBS:-1}"
   make install
 ) 2>&1 | tee "$ICU_BUILD_ROOT/icu-target-build.log"
