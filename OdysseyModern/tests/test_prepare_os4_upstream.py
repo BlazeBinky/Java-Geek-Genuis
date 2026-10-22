@@ -49,7 +49,43 @@ BAL_BASE = """#include <wtf/Platform.h>
 #endif
 """
 
-
+APP_CMAKE = """set(OdysseyWebBrowser_LIBRARIES
+    JavaScriptCore
+    WebKitLegacy
+    -Wl,--start-group WebCore -Wl,--end-group
+    -lz
+    -lcairo
+    -lpixman
+    -lfontconfig
+    -lfreetype2
+    -lxml2
+    -lz
+    -lcurl
+    -ljpeg
+    -lpng
+    -lssl
+    -lcrypto
+    -licui18n
+    -licuuc
+    -licudata
+    -lsqlite3
+    -lxslt
+    -ldebug
+    -lopenurl
+    -lrexxsyslib
+    -lavformat
+    -lbz2
+    -lavcodec
+    -liconv
+    -lz
+    -lavutil
+    -lswresample
+    -lswscale
+    -lpsl
+    -latomic
+    ${ZLIB_LIBRARIES}
+)
+"""
 def run(source: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, str(PATCHER), str(source)],
@@ -69,7 +105,9 @@ def main() -> int:
         source = Path(temp) / "upstream"
         (source / "Source" / "WTF" / "wtf").mkdir(parents=True)
         (source / "Source" / "WebCore" / "platform" / "mui").mkdir(parents=True)
+        (source / "Tools" / "OdysseyWebBrowser").mkdir(parents=True)
         (source / "CMakeLists.txt").write_text("# fixture\n", encoding="utf-8")
+        (source / "Tools" / "OdysseyWebBrowser" / "CMakeLists.txt").write_text(APP_CMAKE, encoding="utf-8")
         (source / "Source" / "WTF" / "wtf" / "Platform.h").write_text(PLATFORM, encoding="utf-8")
         (source / "Source" / "WTF" / "wtf" / "PlatformMUI.cmake").write_text(MUI_CMAKE, encoding="utf-8")
         (source / "Source" / "WebCore" / "platform" / "mui" / "BALBase.h").write_text(BAL_BASE, encoding="utf-8")
@@ -80,6 +118,7 @@ def main() -> int:
         platform = (source / "Source" / "WTF" / "wtf" / "Platform.h").read_text(encoding="utf-8")
         cmake = (source / "Source" / "WTF" / "wtf" / "PlatformMUI.cmake").read_text(encoding="utf-8")
         bal = (source / "Source" / "WebCore" / "platform" / "mui" / "BALBase.h").read_text(encoding="utf-8")
+        app_cmake = (source / "Tools" / "OdysseyWebBrowser" / "CMakeLists.txt").read_text(encoding="utf-8")
         allocator = source / "Source" / "WTF" / "wtf" / "OSAllocatorAmigaOS4.cpp"
         strcmp = source / "Source" / "WTF" / "wtf" / "strcasecmpAmigaOS4.cpp"
 
@@ -91,6 +130,14 @@ def main() -> int:
         assert "OSAllocatorAROS.cpp" in cmake
         assert '#include "AmigaOS4/BALTypeAmigaOS4.h"' not in bal
         assert "#undef INLINE" in bal and "#undef DOUBLE" in bal
+        assert "if (ODYSSEY_TARGET_AMIGAOS4)" in app_cmake
+        os4_link_block = app_cmake.split("else ()", 1)[0]
+        os4_core_libraries = os4_link_block.split("if (ENABLE_XSLT)", 1)[0]
+        assert "-lxslt" not in os4_core_libraries
+        assert "-lavformat" not in os4_core_libraries
+        assert "if (ENABLE_XSLT)" in os4_link_block
+        assert "if (ENABLE_VIDEO OR ENABLE_MEDIA_SOURCE)" in os4_link_block
+        assert "-lavformat" in app_cmake.split("else ()", 1)[1], "non-OS4 link dependencies were lost"
         assert allocator.is_file() and "AllocVecTags" in allocator.read_text(encoding="utf-8")
         assert strcmp.is_file() and 'extern "C" int strcasecmp' in strcmp.read_text(encoding="utf-8")
 
@@ -98,6 +145,7 @@ def main() -> int:
             source / "Source" / "WTF" / "wtf" / "Platform.h",
             source / "Source" / "WTF" / "wtf" / "PlatformMUI.cmake",
             source / "Source" / "WebCore" / "platform" / "mui" / "BALBase.h",
+            source / "Tools" / "OdysseyWebBrowser" / "CMakeLists.txt",
             allocator,
             strcmp,
         ]
