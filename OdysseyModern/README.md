@@ -47,7 +47,7 @@ On Linux/WSL with the AROS SDK installed as described in the [upstream build gui
 2. If the SDK is not located beside the compiler installation, set `ODYSSEY_SDK_DIR` to its `Development` directory.
 3. Run `bash OdysseyModern/fetch-and-build-aros.sh`.
 
-The script saves logs in `cross-build-x86_64-aros/odyssey-build.log` and verifies JIT/FTL-JIT flags for that target. Upstream notes that compilation is very resource-intensive, with documented examples using 24–32 GB RAM; an 8 GB host may run out of memory even at one job.
+The script saves logs in `cross-build-x86_64-aros/odyssey-build.log` and verifies JIT/FTL-JIT flags for that target. It detects Docker/cgroup memory caps before choosing parallel jobs, instead of blindly using host RAM. Upstream notes that compilation is very resource-intensive, with documented examples using 24–32 GB RAM; an 8 GB host may still run out of memory even at one job. You can override the detected parallelism using `BUILD_JOBS=1` (or another positive integer), but increasing it can cause out-of-memory failures.
 
 ## Performance and compatibility tests
 
