@@ -16,8 +16,11 @@ ALLOCATOR = r'''/*
  *
  * OSAllocator has a virtual-memory-style API. AmigaOS 4 AllocVecTags cannot
  * provide all POSIX reserve/decommit semantics, so this implementation keeps
- * an aligned allocation until release and zeroes memory on commit/decommit.
- * It does not implement guard pages or a PPC JavaScript JIT.
+ * an aligned allocation until release. WebKit allocations can be accessed by
+ * worker/GC tasks, so use MEMF_SHARED (not task-private MEMF_PRIVATE). Keep
+ * AVT_Lock disabled to avoid pinning the whole browser heap in physical RAM.
+ * The allocator zeroes new reservations and clears decommitted ranges, but it
+ * does not implement guard pages or a PPC JavaScript JIT.
  */
 #include "config.h"
 #include "OSAllocator.h"
@@ -44,11 +47,12 @@ void* OSAllocator::reserveUncommitted(size_t bytes, Usage usage, bool writable, 
     if (!bytes || executable)
         return nullptr;
 
-    // OSAllocator::reserveUncommitted promises zeroed memory. AmigaOS 4
-    // lacks the VM reservation/commit split used by POSIX ports, so allocate
-    // aligned private memory and have Exec clear it exactly once here.
+    // OSAllocator::reserveUncommitted promises zeroed memory. These pages
+    // can be consumed from WebKit worker/GC tasks, so they must be shared,
+    // not task-private. Allow swapping instead of pinning the browser heap.
     return IExec->AllocVecTags(bytes,
-        AVT_Type, MEMF_PRIVATE,
+        AVT_Type, MEMF_SHARED,
+        AVT_Lock, FALSE,
         AVT_Alignment, AmigaOS4PageSize,
         AVT_ClearWithValue, 0,
         TAG_END);
