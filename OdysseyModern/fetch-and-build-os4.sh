@@ -110,8 +110,13 @@ if [[ -f "$BUILD_DIR/CMakeCache.txt" ]] && ! grep -Fq "$SCRIPT_DIR/toolchains/AM
   fail "Build directory already has a different toolchain configured. Choose a fresh ODYSSEY_SOURCE_DIR."
 fi
 
-printf 'Source revision: %s\nSDK root: %s\nProfile: %s (-O%s)\nMedia build: %s\n' "$REVISION" "$SDK_ROOT" "$PROFILE" "$ODYSSEY_OPT_LEVEL" "$MEDIA"
+printf 'Source revision: %s\nSDK root: %s\nProfile: %s (-O%s)\nMedia build: %s\nXSLT: %s\n' "$REVISION" "$SDK_ROOT" "$PROFILE" "$ODYSSEY_OPT_LEVEL" "$MEDIA" "$XSLT"
 printf 'Configuring experimental AmigaOS 4 PPC build. The newer upstream branch may require additional OS4 platform-port fixes.\n'
+
+XSLT_ARGS=(-DENABLE_XSLT="$XSLT_FLAG")
+if [[ "$XSLT_FLAG" == "ON" ]]; then
+  XSLT_ARGS+=("-DLIBXSLT_INCLUDE_DIR=$LIBXSLT_INCLUDE_DIR" "-DLIBXSLT_LIBRARIES=xslt")
+fi
 
 cmake -S "$SOURCE_DIR" -B "$BUILD_DIR" \
   -DCMAKE_TOOLCHAIN_FILE="$SCRIPT_DIR/toolchains/AMIGAOS4.cmake" \
@@ -124,12 +129,12 @@ cmake -S "$SOURCE_DIR" -B "$BUILD_DIR" \
   -DCAIRO_INCLUDE_DIRS="$CAIRO_INCLUDE_DIR" \
   -DFREETYPE_INCLUDE_DIRS="$FREETYPE_INCLUDE_DIR" \
   -DLIBXML2_INCLUDE_DIR="$LIBXML2_INCLUDE_DIR" \
-  -DLIBXSLT_INCLUDE_DIR="$LIBXSLT_INCLUDE_DIR" \
   -DENABLE_VIDEO="$MEDIA_FLAG" \
-  -DENABLE_MEDIA_SOURCE="$MEDIA_FLAG" 2>&1 | tee "$BUILD_DIR/odyssey-configure.log"
+  -DENABLE_MEDIA_SOURCE="$MEDIA_FLAG" \
+  "${XSLT_ARGS[@]}" 2>&1 | tee "$BUILD_DIR/odyssey-configure.log"
 
 if [[ "${ODYSSEY_CONFIGURE_ONLY:-0}" == "1" ]]; then
-  printf '\\nCMake configuration completed for upstream revision %s. Compile/link/runtime validation remains outstanding.\\n' "$REVISION"
+  printf '\nCMake configuration completed for upstream revision %s. Compile/link/runtime validation remains outstanding.\n' "$REVISION"
   exit 0
 fi
 
