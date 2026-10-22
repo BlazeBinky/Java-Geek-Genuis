@@ -47,7 +47,6 @@ class ICUPlatformFragmentTests(unittest.TestCase):
         self.assertIn('expected = 29', source)
         self.assertIn('old_count == expected and new_count == 0', source)
         self.assertIn('old_count == 0 and new_count == expected', source)
-        self.assertIn('old_count == 29 and new_count == 0', source)
         patch_at = source.index('old = "-i $(BUILDDIR)"')
         target_configure_at = source.index("Configuring target ICU for AmigaOS 4 PPC")
         self.assertLess(patch_at, target_configure_at, "Makefile.in must be patched before target configure")
