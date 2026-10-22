@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Odyssey Browser Performance Bench</title>
+<style>
+body{font:16px/1.45 sans-serif;max-width:940px;margin:24px auto;padding:0 16px;color:#1d2530}
+button{font:inherit;padding:10px 15px;cursor:pointer}pre{white-space:pre-wrap;background:#f1f4f8;padding:14px;overflow:auto}
+#layout-box{position:absolute;left:-10000px;top:0;width:720px}#canvas{width:640px;height:220px;border:1px solid #aeb8c7}
+.muted{color:#596579}
+</style>
+</head>
+<body>
+<h1>Odyssey Browser Performance Bench</h1>
+<p class="muted">Run five times after one warm-up, on the same device, with the same power settings and no heavy background apps. Lower milliseconds are better. Results are not comparable across different hardware or test versions.</p>
+<button id="run">Run benchmark</button>
+<p id="state">Ready.</p>
+<pre id="output">No benchmark results yet.</pre>
+<div id="layout-box"></div>
+<canvas id="canvas" width="640" height="220"></canvas>
+<script>
+(function () {
+    "use strict";
+    var out = document.getElementById("output");
+    var state = document.getElementById("state");
+    var button = document.getElementById("run");
+    var box = document.getElementById("layout-box");
+    var canvas = document.getElementById("canvas");
+    var ctx = canvas.getContext ? canvas.getContext("2d") : null;
+
+    function now() {
+        return window.performance && performance.now ? performance.now() : new Date().getTime();
+    }
+    function jsBench() {
+        var t = now(), x = 0, i;
+        for (i = 1; i <= 1200000; i++) x = (x + ((i * 17) % 997)) % 1000003;
+        return {ms: now() - t, checksum:x};
+    }
+    function arrayBench() {
+        var t = now(), a = [], i, sum = 0;
+        for (i = 0; i < 180000; i++) a.push((i * 13) % 4093);
+        for (i = 0; i < a.length; i++) sum = (sum + a[i]) % 1000003;
+        return {ms:now() - t, checksum:sum};
+    }
+    function layoutBench() {
+        var t = now(), i, pass, el, sum = 0;
+        box.innerHTML = "";
+        for (i = 0; i < 260; i++) {
+            el = document.createElement("div");
+            el.className = "item";
+            el.style.cssText = "display:inline-block;width:" + (20 + (i % 17)) + "px;height:" + (10 + (i % 9)) + "px;margin:2px;background:#c5d6e8";
+            el.textContent = String(i);
+            box.appendChild(el);
+        }
+        for (pass = 0; pass < 12; pass++) {
+            box.style.width = (650 + (pass % 2) * 70) + "px";
+            for (i = 0; i < box.children.length; i++) sum += box.children[i].getBoundingClientRect().width;
+        }
+        box.innerHTML = "";
+        return {ms:now() - t, checksum:Math.round(sum)};
+    }
+    function canvasBench() {
+        if (!ctx) return {ms:null, checksum:"canvas unavailable"};
+        var t = now(), i, x, y, r;
+        for (i = 0; i < 2200; i++) {
+            x = (i * 37) % 640;
+            y = (i * 61) % 220;
+            r = 2 + (i % 8);
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2, false);
+            ctx.fillStyle = (i % 2) ? "#4779a9" : "#d58b39";
+            ctx.fill();
+        }
+        return {ms:now() - t, checksum:2200};
+    }
+    function median(values) {
+        var copy = values.slice().sort(function (a,b) { return a-b; });
+        return copy[Math.floor(copy.length / 2)];
+    }
+    function runBench() {
+        button.disabled = true;
+        state.textContent = "Running warm-up and five measured rounds…";
+        window.setTimeout(function () {
+            var rounds = {javascript:[], arrays:[], layout:[], canvas:[]};
+            var notes = [];
+            var r, a, b, c, d;
+            jsBench(); arrayBench(); layoutBench(); canvasBench();
+            for (r = 0; r < 5; r++) {
+                a = jsBench(); b = arrayBench(); c = layoutBench(); d = canvasBench();
+                rounds.javascript.push(a.ms);
+                rounds.arrays.push(b.ms);
+                rounds.layout.push(c.ms);
+                if (d.ms !== null) rounds.canvas.push(d.ms);
+                notes.push("Round " + (r + 1) + ": JS " + a.ms.toFixed(1) + " ms; array " +
+                    b.ms.toFixed(1) + " ms; DOM/layout " + c.ms.toFixed(1) + " ms; canvas " +
+                    (d.ms === null ? d.ms : d.ms.toFixed(1)) + " ms");
+            }
+            var lines = [
+                "Odyssey Browser Performance Bench v1",
+                "User agent: " + navigator.userAgent,
+                "Date: " + new Date().toISOString(),
+                "Screen: " + screen.width + "x" + screen.height,
+                "",
+                "Median of five measured rounds (lower is better):",
+                "JavaScript numeric loop: " + median(rounds.javascript).toFixed(1) + " ms",
+                "Array fill + scan: " + median(rounds.arrays).toFixed(1) + " ms",
+                "DOM creation + forced layout: " + median(rounds.layout).toFixed(1) + " ms",
+                "Canvas draw (2200 circles): " + (rounds.canvas.length ? median(rounds.canvas).toFixed(1) + " ms" : "unavailable"),
+                "",
+                "Individual rounds:",
+                notes.join("\n"),
+                "",
+                "Compare only against the same benchmark version and similar hardware. This is a smoke benchmark, not a browser speed score."
+            ];
+            out.textContent = lines.join("\n");
+            state.textContent = "Finished. Copy/save the results when comparing builds.";
+            button.disabled = false;
+        }, 30);
+    }
+    button.addEventListener("click", runBench, false);
+}());
+</script>
+</body>
+</html>
