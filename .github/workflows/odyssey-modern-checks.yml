@@ -85,9 +85,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .odyssey-ccache
-          key: \${{ runner.os }}-odyssey-os4-ccache-gcc11-v1
+          key: ${{ runner.os }}-odyssey-os4-ccache-gcc11-${{ github.sha }}
           restore-keys: |
-            \${{ runner.os }}-odyssey-os4-ccache-
+            ${{ runner.os }}-odyssey-os4-ccache-
       - name: Build AmigaOS 4 PPC Odyssey
         shell: bash
         run: |
