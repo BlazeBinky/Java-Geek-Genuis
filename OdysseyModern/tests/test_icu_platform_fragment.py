@@ -28,6 +28,16 @@ class ICUPlatformFragmentTests(unittest.TestCase):
         self.assertIn('HOST_CC=gcc', source)
         self.assertIn('TARGET_CC=ppc-amigaos-gcc', source)
 
+    def test_target_cxx_uses_native_amigaos_thread_runtime(self) -> None:
+        source = SCRIPT.read_text(encoding="utf-8")
+        toolchain = (ROOT / "toolchains" / "AMIGAOS4.cmake").read_text(encoding="utf-8")
+        patcher = (ROOT / "prepare-os4-upstream.py").read_text(encoding="utf-8")
+
+        self.assertIn('CXXFLAGS="${AMIGAOS4_ICU_CXXFLAGS:--O2} -athread=native"', source)
+        self.assertIn('LIBS="${AMIGAOS4_ICU_LIBS:--lpthread}"', source)
+        self.assertIn('-athread=native', toolchain)
+        self.assertIn('${ZLIB_LIBRARIES} -lpthread', patcher)
+
 
 if __name__ == "__main__":
     unittest.main()
