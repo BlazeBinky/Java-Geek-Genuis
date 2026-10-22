@@ -23,6 +23,35 @@ for tool in git python3 cmake make ppc-amigaos-gcc ppc-amigaos-g++; do
   command -v "$tool" >/dev/null 2>&1 || fail "$tool not found. Use an AmigaOS 4 PPC cross-compiler environment with the matching SDK."
 done
 
+# Fail fast on the exact native C++ threading configuration used by ICU and
+# WebKit. ICU can take several minutes to build before an unresolved __gthread
+# or pthread symbol becomes visible, so test the toolchain before downloading
+# and compiling all of those dependencies. We link but never run the PPC test.
+THREAD_CHECK_DIR="$(mktemp -d)"
+trap 'rm -rf "$THREAD_CHECK_DIR"' EXIT
+cat > "$THREAD_CHECK_DIR/os4-thread-check.cpp" <<'EOF'
+#include <mutex>
+#include <thread>
+
+int main()
+{
+    std::mutex mutex;
+    std::thread worker([&mutex]() {
+        std::lock_guard<std::mutex> lock(mutex);
+    });
+    worker.join();
+    return 0;
+}
+EOF
+if ! ppc-amigaos-g++ -std=gnu++11 -athread=native \
+    "$THREAD_CHECK_DIR/os4-thread-check.cpp" -lpthread \
+    -o "$THREAD_CHECK_DIR/os4-thread-check"; then
+  fail "The PPC C++ runtime cannot link native threads. Verify the SDK/GCC thread model, -athread=native, and -lpthread before starting ICU."
+fi
+rm -rf "$THREAD_CHECK_DIR"
+trap - EXIT
+printf 'PPC native C++ thread link check passed.\n'
+
 # ccache reduces repeat compilation time without changing the generated code.
 # Docker wrappers mount a persistent host cache at /opt/odyssey-ccache.
 CCACHE_MODE="${ODYSSEY_CCACHE:-auto}"
