@@ -29,3 +29,11 @@ A successful C++ compile only demonstrates buildability. A fast browser also nee
 
 The experimental `OSAllocatorAmigaOS4.cpp` preserves WebKit's zeroed-reservation contract by asking Exec to clear each initial allocation. Because this fallback cannot physically decommit pages, `decommit()` clears released ranges; `commit()` can therefore be a logical no-op rather than writing the same bytes a second time. Likewise, `reserveAndCommit()` reuses the already-zeroed reservation instead of clearing it again. This removes redundant memory writes without exposing uninitialized allocation contents. The patcher tests assert the zeroing contract and the no-duplicate-clear behavior. It is a code-level optimization, not yet a measured runtime speedup.
 
+## Current experimental PPC feature profile
+
+The current AmigaOS 4 build script deliberately uses the JavaScript C-loop interpreter: the upstream source has no PowerPC JIT assembler backend, and this OS4 port does not provide executable-memory/cache-flush support. Do not enable JIT/FTL without a real PPC backend and correct instruction-cache synchronization.
+
+The OS4 profile currently disables WebAssembly, Web Audio, Web Crypto, WebGL, Service Workers, and Media Source/Video by default; XSLT is also optional when the matching target dependency is installed. These are real implementation/build limitations, not merely hidden UI switches. The compatibility test page exercises Promise callbacks, modules, actual grid/flex/custom-property layout, IndexedDB read/write, Fetch, WebAssembly, and Web Crypto when those APIs exist. Run it on the target binary and treat failed/missing entries as work items.
+
+Until current TLS validation, certificate handling, supported cipher suites, and current-site compatibility are tested on the actual target, do not use this experimental build for sensitive logins or treat a successful home-page load as proof of safe modern browsing.
+
