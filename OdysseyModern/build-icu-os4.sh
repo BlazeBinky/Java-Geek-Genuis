@@ -90,6 +90,34 @@ sed -i \
   -e '/^BIR_LDFLAGS[[:space:]]*=/d' \
   "$ICU_SOURCE_DIR/icu4c/source/config/mh-unknown"
 
+# ICU's configure correctly reports U_HAVE_TZNAME=0 for this SDK, but ICU
+# 55.1's generic putilimp.h still defines U_TZNAME as POSIX tzname. That makes
+# putil.cpp reference a symbol the OS4 libc doesn't export. Respect the probe:
+# if no timezone-name array exists, leave U_TZNAME undefined and ICU falls back
+# to TZ environment IDs (or an empty abbreviation) without a bad link symbol.
+python3 - "$ICU_SOURCE_DIR/icu4c/source/common/putilimp.h" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+old = """#elif U_PLATFORM == U_PF_OS400
+   /* not defined */
+#else
+#   define U_TZNAME tzname
+#endif"""
+new = """#elif U_PLATFORM == U_PF_OS400
+   /* not defined */
+#elif defined(U_HAVE_TZNAME) && !U_HAVE_TZNAME
+   /* not defined on this target */
+#else
+#   define U_TZNAME tzname
+#endif"""
+if text.count(old) != 1:
+    raise SystemExit("ERROR: ICU putilimp.h timezone patch anchor changed; refusing to guess.")
+path.write_text(text.replace(old, new), encoding="utf-8")
+PY
+
 rm -f "$TARGET_BUILD/config.status"
 printf '\nConfiguring target ICU for AmigaOS 4 PPC...\n'
 BUILD_TRIPLET="$(sh "$ICU_SOURCE_DIR/icu4c/source/config.guess")"
