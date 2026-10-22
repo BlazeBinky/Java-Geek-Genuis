@@ -30,6 +30,7 @@ jobs:
         run: |
           bash -n OdysseyModern/fetch-and-build-aros.sh
           bash -n OdysseyModern/fetch-and-build-os4.sh
+          bash -n OdysseyModern/run-os4-docker.sh
       - name: Validate experimental OS4 CMake toolchain syntax
         run: cmake -P OdysseyModern/toolchains/AMIGAOS4.cmake
       - name: Check whitespace errors
