@@ -131,6 +131,13 @@ REVISION="$(git -C "$SOURCE_DIR" rev-parse HEAD)"
 BUILD_DIR="${ODYSSEY_OS4_BUILD_DIR:-$PWD/cross-build-amigaos4}"
 mkdir -p "$BUILD_DIR"
 
+# Odyssey needs target ICU headers and PPC libraries; the OS4 SDK image does
+# not ship ICU, so build pinned ICU 55.1 before configuring/compiling WebKit.
+ICU_PREFIX="${ODYSSEY_ICU_PREFIX:-$PWD/cross-build-icu-os4/target-install}"
+export ODYSSEY_ICU_PREFIX="$ICU_PREFIX"
+printf 'Preparing target ICU dependency at %s\n' "$ICU_PREFIX"
+bash "$SCRIPT_DIR/build-icu-os4.sh"
+
 if [[ -f "$BUILD_DIR/CMakeCache.txt" ]] && ! grep -Fq "$SCRIPT_DIR/toolchains/AMIGAOS4.cmake" "$BUILD_DIR/CMakeCache.txt"; then
   fail "Build directory already has a different toolchain configured. Choose a fresh ODYSSEY_SOURCE_DIR."
 fi
@@ -161,6 +168,15 @@ cmake -S "$SOURCE_DIR" -B "$BUILD_DIR" \
   -DENABLE_WEB_CRYPTO=OFF \
   -DENABLE_WEBGL=OFF \
   -DENABLE_SERVICE_WORKER=OFF \
+  -DICU_INCLUDE_DIR="$ICU_PREFIX/include" \
+  -DICU_INCLUDE_DIRS="$ICU_PREFIX/include" \
+  -DICU_LIBRARY="$ICU_PREFIX/lib/libicuuc.a" \
+  -DICU_LIBRARIES="$ICU_PREFIX/lib/libicuuc.a" \
+  -DICU_I18N_LIBRARY="$ICU_PREFIX/lib/libicui18n.a" \
+  -DICU_I18N_LIBRARIES="$ICU_PREFIX/lib/libicui18n.a" \
+  -DICU_DATA_LIBRARY="$ICU_PREFIX/lib/libicudata.a" \
+  -DICU_DATA_LIBRARIES="$ICU_PREFIX/lib/libicudata.a" \
+  -DCMAKE_EXE_LINKER_FLAGS="-L$ICU_PREFIX/lib" \
   -DCAIRO_INCLUDE_DIRS="$CAIRO_INCLUDE_DIR" \
   -DFREETYPE_INCLUDE_DIRS="$FREETYPE_INCLUDE_DIR" \
   -DLIBXML2_INCLUDE_DIR="$LIBXML2_INCLUDE_DIR" \
