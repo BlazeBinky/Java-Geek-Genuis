@@ -44,16 +44,20 @@ void* OSAllocator::reserveUncommitted(size_t bytes, Usage usage, bool writable, 
     if (!bytes || executable)
         return nullptr;
 
+    // Do not eagerly clear a reservation: WebKit may commit it in ranges.
+    // commit() clears each newly committed range before the engine can use it.
     return IExec->AllocVecTags(bytes,
         AVT_Type, MEMF_PRIVATE,
         AVT_Alignment, AmigaOS4PageSize,
-        AVT_ClearWithValue, 0,
         TAG_END);
 }
 
 void* OSAllocator::reserveAndCommit(size_t bytes, Usage usage, bool writable, bool executable, bool includesGuardPages)
 {
-    return reserveUncommitted(bytes, usage, writable, executable, includesGuardPages);
+    void* allocation = reserveUncommitted(bytes, usage, writable, executable, includesGuardPages);
+    if (allocation && bytes)
+        memset(allocation, 0, bytes);
+    return allocation;
 }
 
 void OSAllocator::commit(void* address, size_t bytes, bool writable, bool executable)
