@@ -1,0 +1,32 @@
+name: Odyssey modernization checks
+
+on:
+  push:
+    branches:
+      - odyssey-modern-browser-work
+  pull_request:
+    branches:
+      - odyssey-modern-browser-work
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Check Python syntax
+        run: python -m py_compile OdysseyModern/prepare-upstream.py OdysseyModern/tests/test_prepare_upstream.py
+      - name: Test downstream patch application
+        run: python OdysseyModern/tests/test_prepare_upstream.py
+      - name: Check shell syntax
+        run: bash -n OdysseyModern/fetch-and-build-aros.sh
+      - name: Check whitespace errors
+        run: git diff --check
