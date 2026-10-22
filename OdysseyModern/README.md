@@ -22,13 +22,13 @@ On Windows with Docker Desktop (Linux containers) installed, you can start the s
 On Linux/WSL with Docker, use:
 
 ```bash
-./OdysseyModern/run-os4-docker.sh
+bash OdysseyModern/run-os4-docker.sh
 ```
 
 These wrappers use the AmigaGCConDocker GCC 11 image by default; override it with `ODYSSEY_OS4_DOCKER_IMAGE` on Linux or the `-Image` parameter on Windows. You can bypass Docker and run the SDK-backed script directly, from the repository root:
 
 ```bash
-./OdysseyModern/fetch-and-build-os4.sh
+bash OdysseyModern/fetch-and-build-os4.sh
 ```
 
 The first goal is to collect real compiler errors and port the missing OS4 shims forward. Default `ODYSSEY_BUILD_PROFILE=balanced` uses `-O2`. For an experimental `-O3` build:
@@ -45,7 +45,7 @@ On Linux/WSL with the AROS SDK installed as described in the [upstream build gui
 
 1. Ensure `x86_64-aros-gcc` and `x86_64-aros-g++` are on `PATH`.
 2. If the SDK is not located beside the compiler installation, set `ODYSSEY_SDK_DIR` to its `Development` directory.
-3. Run `./OdysseyModern/fetch-and-build-aros.sh`.
+3. Run `bash OdysseyModern/fetch-and-build-aros.sh`.
 
 The script saves logs in `cross-build-x86_64-aros/odyssey-build.log` and verifies JIT/FTL-JIT flags for that target. Upstream notes that compilation is very resource-intensive, with documented examples using 24–32 GB RAM; an 8 GB host may run out of memory even at one job.
 
