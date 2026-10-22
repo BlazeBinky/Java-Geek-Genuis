@@ -24,3 +24,8 @@ Serve the repository root with a local HTTP server, open:
 Capture at least five results before and after a change using the same machine, build type, test page, and power configuration. Compare the median, not the best run. Save user-agent, date, target OS, compiler flags and logs alongside the results.
 
 A successful C++ compile only demonstrates buildability. A fast browser also needs real-site tests, stable layout/rendering, memory tests, working HTTPS validation, and current enough JavaScript/CSS/network implementations.
+
+## AmigaOS 4 memory-allocation hot path
+
+The experimental `OSAllocatorAmigaOS4.cpp` now leaves a merely reserved allocation untouched and zeroes memory when WebKit commits it; `reserveAndCommit` still explicitly returns zero-initialized memory. This avoids an unnecessary full-memory write when the engine reserves a larger arena and commits only selected ranges. Decommit still clears memory instead of returning physical pages because this port does not yet provide true VM-backed decommit/guard pages. The patcher tests now assert this zero-on-commit behavior. It is a code-level optimization, not yet a measured runtime speedup.
+
