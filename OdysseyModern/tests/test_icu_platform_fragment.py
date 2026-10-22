@@ -38,6 +38,19 @@ class ICUPlatformFragmentTests(unittest.TestCase):
         self.assertIn('-athread=native', toolchain)
         self.assertIn('${ZLIB_LIBRARIES} -lpthread', patcher)
 
+    def test_target_data_generators_read_from_completed_host_data(self) -> None:
+        source = SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn('ICU_HOST_DATA_DIR="$HOST_BUILD/data/out/build/icudt55l"', source)
+        self.assertIn('old = "-i $(BUILDDIR)"', source)
+        self.assertIn('new = "-i $(ICU_HOST_DATA_DIR)"', source)
+        self.assertIn('old_count == 2', source)
+        self.assertIn('new_count == 2', source)
+        patch_at = source.index('old = "-i $(BUILDDIR)"')
+        target_configure_at = source.index("Configuring target ICU for AmigaOS 4 PPC")
+        self.assertLess(patch_at, target_configure_at, "Makefile.in must be patched before target configure")
+        self.assertIn('ICU_HOST_DATA_DIR="$HOST_BUILD/data/out/build/icudt55l" make -j', source)
+
 
 if __name__ == "__main__":
     unittest.main()
