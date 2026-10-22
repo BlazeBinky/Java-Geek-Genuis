@@ -39,3 +39,32 @@ jobs:
         run: cmake -P OdysseyModern/toolchains/AMIGAOS4.cmake
       - name: Check whitespace errors
         run: git diff --check
+
+  os4-configure:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[os4-configure]'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Configure the actual upstream tree against the AmigaOS 4 SDK
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker pull walkero/amigagccondocker:os4-gcc11-3.5.2
+          docker run --rm --init \
+            --volume "$PWD:/opt/code" \
+            --workdir /opt/code \
+            --env ODYSSEY_CONFIGURE_ONLY=1 \
+            --env ODYSSEY_BUILD_PROFILE=balanced \
+            walkero/amigagccondocker:os4-gcc11-3.5.2 \
+            bash OdysseyModern/fetch-and-build-os4.sh
+      - name: Upload configuration logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: odyssey-os4-configure-logs
+          path: |
+            cross-build-amigaos4/odyssey-configure.log
+            cross-build-amigaos4/CMakeCache.txt
+          if-no-files-found: warn
