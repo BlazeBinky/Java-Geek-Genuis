@@ -144,9 +144,12 @@ def main() -> int:
         assert "-lavformat" in app_cmake.split("else ()", 1)[1], "non-OS4 link dependencies were lost"
         assert allocator.is_file() and "AllocVecTags" in allocator.read_text(encoding="utf-8")
         allocator_text = allocator.read_text(encoding="utf-8")
-        assert "AVT_ClearWithValue" not in allocator_text, "uncommitted reservations should not be eagerly zero-filled"
-        assert "void* allocation = reserveUncommitted" in allocator_text
-        assert "memset(allocation, 0, bytes)" in allocator_text, "reserveAndCommit must return zeroed memory"
+        assert "AVT_ClearWithValue, 0" in allocator_text, "reserveUncommitted must preserve the zeroed-memory contract"
+        assert "return reserveUncommitted(bytes, usage, writable, executable, includesGuardPages);" in allocator_text
+        commit_body = allocator_text.split("void OSAllocator::commit", 1)[1].split("void OSAllocator::decommit", 1)[0]
+        assert "memset(" not in commit_body, "commit should not clear memory that reservation/decommit already zeroed"
+        decommit_body = allocator_text.split("void OSAllocator::decommit", 1)[1].split("void OSAllocator::releaseDecommitted", 1)[0]
+        assert "memset(address, 0, bytes)" in decommit_body, "decommit must zero memory before it can be reused"
         assert strcmp.is_file() and 'extern "C" int strcasecmp' in strcmp.read_text(encoding="utf-8")
 
         tracked = [
