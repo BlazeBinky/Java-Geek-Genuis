@@ -95,14 +95,21 @@ old = "-i $(BUILDDIR)"
 new = "-i $(ICU_HOST_DATA_DIR)"
 old_count = text.count(old)
 new_count = text.count(new)
-if old_count == 2:
+# The pinned ICU 55.1 template has 29 generator input paths. They all name
+# auxiliary input data (including gensprep/genrb), while each rule's output
+# target remains controlled by its separate -d/-o arguments. Every generator
+# is a native host executable during a cross-build, so every -i must point at
+# the completed host-native data tree. Do not silently accept a partial patch.
+expected = 29
+if old_count == expected and new_count == 0:
     text = text.replace(old, new)
-elif old_count == 0 and new_count == 2:
+elif old_count == 0 and new_count == expected:
     # Idempotent after an interrupted cross-build.
     pass
 else:
     raise SystemExit(
         "ERROR: ICU data-generation input-directory patch anchor changed; "
+        f"expected {expected} original or patched occurrences, "
         f"found {old_count} original and {new_count} patched occurrences."
     )
 path.write_text(text, encoding="utf-8")
