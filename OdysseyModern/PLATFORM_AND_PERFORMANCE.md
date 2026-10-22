@@ -27,7 +27,7 @@ A successful C++ compile only demonstrates buildability. A fast browser also nee
 
 ## AmigaOS 4 memory-allocation hot path
 
-The experimental `OSAllocatorAmigaOS4.cpp` preserves WebKit's zeroed-reservation contract by asking Exec to clear each initial allocation. Because this fallback cannot physically decommit pages, `decommit()` clears released ranges; `commit()` can therefore be a logical no-op rather than writing the same bytes a second time. Likewise, `reserveAndCommit()` reuses the already-zeroed reservation instead of clearing it again. This removes redundant memory writes without exposing uninitialized allocation contents. The patcher tests assert the zeroing contract and the no-duplicate-clear behavior. It is a code-level optimization, not yet a measured runtime speedup.
+The experimental `OSAllocatorAmigaOS4.cpp` preserves WebKit's zeroed-reservation contract by asking Exec to clear each initial allocation. It uses `MEMF_SHARED`, not `MEMF_PRIVATE`, because WebKit's workers and garbage collector can touch heap pages outside the allocating task; `AVT_Lock, FALSE` avoids permanently pinning the entire browser heap in physical RAM. Because this fallback cannot physically decommit pages, `decommit()` clears released ranges; `commit()` can therefore be a logical no-op rather than writing the same bytes a second time. Likewise, `reserveAndCommit()` reuses the already-zeroed reservation instead of clearing it again. The patcher tests assert shared/swappable allocations, the zeroing contract, and no duplicate clear pass. This reduces redundant writes and avoids task-private memory misuse, but is not yet a measured whole-browser speedup.
 
 ## Current experimental PPC feature profile
 
