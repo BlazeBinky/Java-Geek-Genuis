@@ -8,13 +8,13 @@
 body{font:16px/1.45 sans-serif;max-width:940px;margin:24px auto;padding:0 16px;color:#1d2530}
 h1{margin-bottom:4px}.muted{color:#596579}table{width:100%;border-collapse:collapse;margin:18px 0}
 th,td{text-align:left;padding:9px;border-bottom:1px solid #d5dbe4}th{background:#f1f4f8}
-.status{font-weight:bold}.pass{color:#176b36}.fail{color:#a12c26}.unknown{color:#725c16}
+.status{font-weight:bold}.pass,.available{color:#176b36}.fail,.missing{color:#a12c26}.skip{color:#725c16}.pending{color:#496b9a}
 code{background:#f1f4f8;padding:2px 5px;border-radius:4px}
 </style>
 </head>
 <body>
 <h1>Odyssey modern-web capability checks</h1>
-<p class="muted">Run this page inside the actual browser binary. A reported API does not prove its implementation is complete, secure, or fast. Save the result with the browser version and target OS.</p>
+<p class="muted">Run this page inside the actual browser binary. It distinguishes API-presence signals from functional smoke tests; neither is a full conformance, security, or speed certification. Serve over HTTP(S) to exercise Fetch. Save the result with browser version and target OS.</p>
 <p id="summary">Checking…</p>
 <table>
 <thead><tr><th>Capability</th><th>Result</th><th>What this check means</th></tr></thead>
@@ -28,13 +28,75 @@ code{background:#f1f4f8;padding:2px 5px;border-radius:4px}
     var rows = [];
     var ua = navigator.userAgent || "Unavailable";
     var results = document.getElementById("results");
+    var passed = 0;
+    var failed = 0;
+    var skipped = 0;
+    var available = 0;
+    var finished = 0;
 
-    function add(name, ok, note) {
-        rows.push({name:name, ok:ok, note:note});
+    function record(name, status, note) {
+        var tr = document.createElement("tr");
+        var nameCell = document.createElement("td");
+        var statusCell = document.createElement("td");
+        var noteCell = document.createElement("td");
+        nameCell.textContent = name;
+        statusCell.textContent = status;
+        statusCell.className = "status " + status.toLowerCase();
+        noteCell.textContent = note || "";
+        tr.appendChild(nameCell);
+        tr.appendChild(statusCell);
+        tr.appendChild(noteCell);
+        results.appendChild(tr);
+        rows.push({name:name, status:status, note:note || ""});
+        updateSummary();
+        return rows.length - 1;
     }
+
+    function updateSummary() {
+        var i, r;
+        passed = 0;
+        failed = 0;
+        skipped = 0;
+        available = 0;
+        finished = 0;
+        for (i = 0; i < rows.length; i++) {
+            r = rows[i];
+            if (r.status === "PASS" || r.status === "AVAILABLE") {
+                if (r.status === "PASS") passed++;
+                else available++;
+            } else if (r.status === "FAIL" || r.status === "MISSING") {
+                if (r.status === "FAIL") failed++;
+            } else if (r.status === "SKIP") skipped++;
+            if (r.status !== "PENDING") finished++;
+        }
+        document.getElementById("summary").textContent =
+            "Functional checks: " + passed + " passed, " + failed +
+            " failed, " + skipped + " skipped. Capability signals: " +
+            available + " available. " + (rows.length - finished) + " pending.";
+    }
+
+    function complete(index, status, note) {
+        var row = rows[index];
+        if (!row || row.status !== "PENDING") return;
+        row.status = status;
+        row.note = note || "";
+        var tr = results.rows[index];
+        if (tr && tr.cells.length >= 3) {
+            tr.cells[1].textContent = status;
+            tr.cells[1].className = "status " + status.toLowerCase();
+            tr.cells[2].textContent = row.note;
+        }
+        updateSummary();
+    }
+
+    function testRow(name, note) {
+        return record(name, "PENDING", note || "");
+    }
+
     function cssSupport(property, value) {
         return !!(window.CSS && typeof CSS.supports === "function" && CSS.supports(property, value));
     }
+
     function safeCanvasContext(type) {
         try {
             var canvas = document.createElement("canvas");
@@ -42,46 +104,291 @@ code{background:#f1f4f8;padding:2px 5px;border-radius:4px}
         } catch (e) { return false; }
     }
 
-    add("Promises", typeof window.Promise === "function", "Promise constructor is exposed.");
-    add("Fetch API", typeof window.fetch === "function", "Fetch API is exposed; this does not verify all request modes.");
-    add("ES modules", "noModule" in document.createElement("script"), "Checks script-module support signal; it does not execute a module.");
-    add("CSS Grid", cssSupport("display", "grid"), "CSS.supports reports Grid support.");
-    add("CSS custom properties", cssSupport("--odyssey-check", "1"), "CSS.supports reports custom-property support.");
-    add("Flexbox", cssSupport("display", "flex"), "CSS.supports reports flex layout support.");
-    add("ResizeObserver", typeof window.ResizeObserver === "function", "Observer API is exposed.");
-    add("IndexedDB", !!(window.indexedDB && typeof window.indexedDB.open === "function"), "IndexedDB is exposed.");
-    add("WebAssembly", typeof window.WebAssembly === "object", "WebAssembly API is exposed; run real module tests to confirm it works.");
-    add("Web Crypto", !!(window.crypto && window.crypto.subtle), "SubtleCrypto is exposed; operation availability depends on context and algorithms.");
-    add("Service workers", !!(navigator.serviceWorker && window.isSecureContext), "Requires service-worker support and a secure context (or localhost).");
-    add("WebGL", safeCanvasContext("webgl") || safeCanvasContext("experimental-webgl"), "Creates a WebGL 1 context; GPU/driver coverage remains untested.");
-    add("WebGL 2", safeCanvasContext("webgl2"), "Creates a WebGL 2 context.");
-    add("Web Audio", !!(window.AudioContext || window.webkitAudioContext), "AudioContext is exposed.");
-    add("Video element", !!(document.createElement("video").canPlayType), "HTML video API exists; codec support needs separate playback tests.");
-    add("Performance timing", !!(window.performance && typeof performance.now === "function"), "High-resolution monotonic timer is exposed.");
+    function runLayoutTests() {
+        var parent, child1, child2, rect1, rect2, cssWidth, custom, customWidth, flexOkay, gridOkay;
+        if (!document.body || !document.body.appendChild || !document.createElement) {
+            record("Functional CSS layout", "SKIP", "DOM is not ready.");
+            return;
+        }
 
-    var passed = 0;
-    rows.forEach(function (r) {
-        var tr = document.createElement("tr");
-        var name = document.createElement("td");
-        var status = document.createElement("td");
-        var note = document.createElement("td");
-        name.textContent = r.name;
-        status.textContent = r.ok ? "AVAILABLE" : "MISSING";
-        status.className = "status " + (r.ok ? "pass" : "fail");
-        note.textContent = r.note;
-        tr.appendChild(name); tr.appendChild(status); tr.appendChild(note);
-        results.appendChild(tr);
-        if (r.ok) passed++;
-    });
-    document.getElementById("summary").textContent =
-        passed + " of " + rows.length + " capability signals available. This is a smoke test, not a standards compliance score.";
+        parent = document.createElement("div");
+        parent.style.cssText = "position:absolute;left:-10000px;top:0;width:120px;height:30px;";
+        child1 = document.createElement("div");
+        child2 = document.createElement("div");
+        child1.style.cssText = "width:20px;height:10px;flex:0 0 20px;";
+        child2.style.cssText = "width:20px;height:10px;flex:0 0 20px;";
+        parent.style.display = "flex";
+        parent.appendChild(child1);
+        parent.appendChild(child2);
+        document.body.appendChild(parent);
+        rect1 = child1.getBoundingClientRect();
+        rect2 = child2.getBoundingClientRect();
+        flexOkay = Math.abs(rect1.top - rect2.top) < 1 && rect2.left >= rect1.right - 1;
+        record("Flexbox layout actually places children side-by-side", flexOkay ? "PASS" : "FAIL",
+            flexOkay ? "Measured child geometry matches a horizontal flex row." :
+            "The second child did not occupy the next horizontal slot.");
+        parent.parentNode.removeChild(parent);
+
+        parent = document.createElement("div");
+        parent.style.cssText = "position:absolute;left:-10000px;top:0;width:120px;height:30px;display:grid;grid-template-columns:20px 30px;grid-template-rows:10px;";
+        child1 = document.createElement("div");
+        child2 = document.createElement("div");
+        child1.style.cssText = "width:20px;height:10px;grid-column:1;grid-row:1;";
+        child2.style.cssText = "width:30px;height:10px;grid-column:2;grid-row:1;";
+        parent.appendChild(child1);
+        parent.appendChild(child2);
+        document.body.appendChild(parent);
+        rect1 = child1.getBoundingClientRect();
+        rect2 = child2.getBoundingClientRect();
+        gridOkay = Math.abs(rect1.top - rect2.top) < 1 && rect2.left >= rect1.right - 1;
+        record("CSS Grid layout actually places columns", gridOkay ? "PASS" : "FAIL",
+            gridOkay ? "Measured child geometry matches two grid columns." :
+            "Grid children did not occupy separate columns on the same row.");
+        parent.parentNode.removeChild(parent);
+
+        custom = document.createElement("div");
+        custom.style.cssText = "position:absolute;left:-10000px;top:0;--odyssey-width:37px;width:var(--odyssey-width);height:5px;";
+        document.body.appendChild(custom);
+        cssWidth = window.getComputedStyle ? window.getComputedStyle(custom).width : "";
+        customWidth = parseFloat(cssWidth);
+        record("CSS custom properties compute a real dimension", Math.abs(customWidth - 37) < 1 ? "PASS" : "FAIL",
+            "Computed width: " + (cssWidth || "unavailable") + ".");
+        custom.parentNode.removeChild(custom);
+    }
+
+    function runPromiseTest() {
+        var index = testRow("Promise resolution runs correctly", "Checking Promise.resolve(40).then(...) equals 42.");
+        if (typeof window.Promise !== "function") {
+            complete(index, "SKIP", "Promise API is missing; see the capability row.");
+            return;
+        }
+        try {
+            window.Promise.resolve(40).then(function (value) {
+                complete(index, value + 2 === 42 ? "PASS" : "FAIL",
+                    value + 2 === 42 ? "Promise callback produced 42." : "Unexpected Promise result.");
+            }, function (error) {
+                complete(index, "FAIL", String(error));
+            });
+        } catch (e) { complete(index, "FAIL", String(e)); }
+    }
+
+    function runFetchTest() {
+        var index = testRow("Fetch reads this page from the same origin", "Requires this page to be served over HTTP(S), not file://.");
+        if (typeof window.fetch !== "function") {
+            complete(index, "SKIP", "Fetch API is missing.");
+            return;
+        }
+        if (location.protocol !== "http:" && location.protocol !== "https:") {
+            complete(index, "SKIP", "Open through a local HTTP server to test networking; file URL fetch is not comparable.");
+            return;
+        }
+        try {
+            window.fetch(location.href).then(function (response) {
+                if (!response || !response.ok) {
+                    complete(index, "FAIL", "HTTP response was not successful: " + (response ? response.status : "none"));
+                    return null;
+                }
+                return response.text();
+            }).then(function (body) {
+                if (body === null) return;
+                complete(index, typeof body === "string" && body.length > 0 ? "PASS" : "FAIL",
+                    "Fetched " + (body ? body.length : 0) + " characters from the current page.");
+            }, function (error) {
+                complete(index, "FAIL", "Fetch rejected: " + String(error));
+            });
+        } catch (e) { complete(index, "FAIL", String(e)); }
+    }
+
+    function runModuleTest() {
+        var index = testRow("ECMAScript module executes", "Loads a tiny module; restrictive CSP can block the Blob URL test.");
+        if (!("noModule" in document.createElement("script"))) {
+            complete(index, "SKIP", "Script module support signal is missing.");
+            return;
+        }
+        if (!window.Blob || !window.URL || !window.URL.createObjectURL) {
+            complete(index, "SKIP", "Blob URLs are unavailable for a module test.");
+            return;
+        }
+        var settled = false;
+        var script = document.createElement("script");
+        var url;
+        try {
+            url = window.URL.createObjectURL(new Blob(["window.__odysseyModuleSmoke = 40 + 2;"], {type:"text/javascript"}));
+            script.type = "module";
+            script.src = url;
+            script.onload = function () {
+                if (settled) return;
+                settled = true;
+                complete(index, window.__odysseyModuleSmoke === 42 ? "PASS" : "FAIL",
+                    window.__odysseyModuleSmoke === 42 ? "Module code executed and wrote the expected value." :
+                    "The module loaded without producing the expected result.");
+                window.URL.revokeObjectURL(url);
+            };
+            script.onerror = function () {
+                if (settled) return;
+                settled = true;
+                complete(index, "FAIL", "The module script failed to load or execute.");
+                window.URL.revokeObjectURL(url);
+            };
+            document.head.appendChild(script);
+            window.setTimeout(function () {
+                if (settled) return;
+                settled = true;
+                complete(index, "FAIL", "No module completion event was received within 4 seconds.");
+                window.URL.revokeObjectURL(url);
+                if (script.parentNode) script.parentNode.removeChild(script);
+            }, 4000);
+        } catch (e) {
+            complete(index, "FAIL", String(e));
+            if (url) window.URL.revokeObjectURL(url);
+        }
+    }
+
+    function runWasmTest() {
+        var index = testRow("WebAssembly module actually executes", "Instantiates a tiny module that adds 20 + 22.");
+        if (!window.WebAssembly || typeof window.WebAssembly.instantiate !== "function" || !window.Uint8Array) {
+            complete(index, "SKIP", "WebAssembly instantiate API is missing.");
+            return;
+        }
+        var bytes = new Uint8Array([
+            0,97,115,109,1,0,0,0,
+            1,7,1,96,2,127,127,1,127,
+            3,2,1,0,
+            7,7,1,3,97,100,100,0,0,
+            10,9,1,7,0,32,0,32,1,106,11
+        ]);
+        try {
+            window.WebAssembly.instantiate(bytes).then(function (result) {
+                var instance = result.instance || result;
+                var good = !!(instance.exports && instance.exports.add && instance.exports.add(20, 22) === 42);
+                complete(index, good ? "PASS" : "FAIL",
+                    good ? "The WebAssembly export returned 42." : "Module compiled, but its add export returned an unexpected result.");
+            }, function (error) { complete(index, "FAIL", "Module instantiation failed: " + String(error)); });
+        } catch (e) { complete(index, "FAIL", String(e)); }
+    }
+
+    function runIndexedDBTest() {
+        var index = testRow("IndexedDB writes and reads a value", "Creates a temporary database, verifies a round trip, then deletes it.");
+        if (!window.indexedDB || typeof window.indexedDB.open !== "function") {
+            complete(index, "SKIP", "IndexedDB is unavailable.");
+            return;
+        }
+        var name = "OdysseyModernSmoke-" + String(new Date().getTime());
+        var request;
+        try {
+            request = window.indexedDB.open(name, 1);
+            request.onupgradeneeded = function () {
+                if (!request.result.objectStoreNames.contains("probe"))
+                    request.result.createObjectStore("probe");
+            };
+            request.onerror = function () { complete(index, "FAIL", "Database open failed: " + String(request.error || "unknown error")); };
+            request.onsuccess = function () {
+                var db = request.result;
+                var tx;
+                try {
+                    tx = db.transaction(["probe"], "readwrite");
+                    tx.objectStore("probe").put("ok", "key");
+                    tx.oncomplete = function () {
+                        var readTx = db.transaction(["probe"], "readonly");
+                        var get = readTx.objectStore("probe").get("key");
+                        get.onsuccess = function () {
+                            var good = get.result === "ok";
+                            db.close();
+                            try { window.indexedDB.deleteDatabase(name); } catch (ignore) {}
+                            complete(index, good ? "PASS" : "FAIL", good ? "Read-after-write returned the expected value." : "Stored value did not match.");
+                        };
+                        get.onerror = function () {
+                            db.close();
+                            try { window.indexedDB.deleteDatabase(name); } catch (ignore2) {}
+                            complete(index, "FAIL", "Read transaction failed.");
+                        };
+                    };
+                    tx.onerror = function () {
+                        db.close();
+                        try { window.indexedDB.deleteDatabase(name); } catch (ignore3) {}
+                        complete(index, "FAIL", "Write transaction failed.");
+                    };
+                } catch (e) {
+                    db.close();
+                    complete(index, "FAIL", String(e));
+                }
+            };
+        } catch (e) { complete(index, "FAIL", String(e)); }
+    }
+
+    function runWebCryptoTest() {
+        var index = testRow("Web Crypto SHA-256 operation works", "Digests the text 'abc' in a secure context.");
+        if (!window.crypto || !window.crypto.subtle || typeof window.crypto.subtle.digest !== "function") {
+            complete(index, "SKIP", "SubtleCrypto digest is unavailable.");
+            return;
+        }
+        if (window.isSecureContext === false) {
+            complete(index, "SKIP", "The page is not a secure context; HTTPS or localhost may be required.");
+            return;
+        }
+        try {
+            var data = new Uint8Array([97,98,99]);
+            window.crypto.subtle.digest("SHA-256", data).then(function (buffer) {
+                var bytes = new Uint8Array(buffer);
+                var hex = "";
+                var i;
+                for (i = 0; i < bytes.length; i++) hex += ("0" + bytes[i].toString(16)).slice(-2);
+                complete(index, hex === "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" ? "PASS" : "FAIL",
+                    "SHA-256 result: " + hex + ".");
+            }, function (error) { complete(index, "FAIL", "Digest rejected: " + String(error)); });
+        } catch (e) { complete(index, "FAIL", String(e)); }
+    }
+
+    record("Fetch API exposed", typeof window.fetch === "function" ? "AVAILABLE" : "MISSING",
+        "A later functional check verifies a same-origin GET.");
+    record("Promises exposed", typeof window.Promise === "function" ? "AVAILABLE" : "MISSING",
+        "A later functional check verifies a Promise callback.");
+    record("ES modules signal", "noModule" in document.createElement("script") ? "AVAILABLE" : "MISSING",
+        "The module execution test below is stronger than this signal.");
+    record("CSS Grid signal", cssSupport("display", "grid") ? "AVAILABLE" : "MISSING",
+        "A later test measures actual grid child positions.");
+    record("CSS custom properties signal", cssSupport("--odyssey-check", "1") ? "AVAILABLE" : "MISSING",
+        "A later test checks a computed width using var().");
+    record("Flexbox signal", cssSupport("display", "flex") ? "AVAILABLE" : "MISSING",
+        "A later test measures actual flex child positions.");
+    record("ResizeObserver signal", typeof window.ResizeObserver === "function" ? "AVAILABLE" : "MISSING",
+        "API existence only; callback delivery is not exercised.");
+    record("IndexedDB signal", !!(window.indexedDB && typeof window.indexedDB.open === "function") ? "AVAILABLE" : "MISSING",
+        "A later test verifies a write/read round trip.");
+    record("WebAssembly signal", !!(window.WebAssembly && typeof window.WebAssembly.instantiate === "function") ? "AVAILABLE" : "MISSING",
+        "A later test instantiates and calls an exported function.");
+    record("Web Crypto signal", !!(window.crypto && window.crypto.subtle) ? "AVAILABLE" : "MISSING",
+        "A later test performs a SHA-256 digest.");
+    record("Service-worker signal", !!(navigator.serviceWorker && window.isSecureContext) ? "AVAILABLE" : "MISSING",
+        "This checks the API and secure-context gate, not registration.");
+    record("WebGL 1 context", safeCanvasContext("webgl") || safeCanvasContext("experimental-webgl") ? "AVAILABLE" : "MISSING",
+        "Creates a WebGL 1 context; rendering/driver stability needs a longer test.");
+    record("WebGL 2 context", safeCanvasContext("webgl2") ? "AVAILABLE" : "MISSING",
+        "Creates a WebGL 2 context; shader/program coverage is not tested.");
+    record("Web Audio signal", !!(window.AudioContext || window.webkitAudioContext) ? "AVAILABLE" : "MISSING",
+        "API existence only; the test does not play sound.");
+    record("Video element signal", !!document.createElement("video").canPlayType ? "AVAILABLE" : "MISSING",
+        "Actual codec support requires a media fixture.");
+    record("Performance timing", !!(window.performance && typeof performance.now === "function") ? "AVAILABLE" : "MISSING",
+        "Checks for a monotonic high-resolution timer.");
+
+    try { runLayoutTests(); } catch (layoutError) { record("Functional CSS layout", "FAIL", String(layoutError)); }
+    runPromiseTest();
+    runFetchTest();
+    runModuleTest();
+    runWasmTest();
+    runIndexedDBTest();
+    runWebCryptoTest();
+
     document.getElementById("environment").textContent =
         "User agent: " + ua + "\n" +
         "URL: " + location.href + "\n" +
         "Date: " + new Date().toISOString() + "\n" +
         "Screen: " + screen.width + "x" + screen.height + "\n" +
         "Secure context: " + (window.isSecureContext === true ? "yes" : window.isSecureContext === false ? "no" : "unknown") + "\n" +
-        "Hardware concurrency: " + (navigator.hardwareConcurrency || "not exposed");
+        "Hardware concurrency: " + (navigator.hardwareConcurrency || "not exposed") + "\n" +
+        "Protocol: " + location.protocol + "\n" +
+        "Run over HTTP(S) for meaningful same-origin network checks.";
 }());
 </script>
 </body>
