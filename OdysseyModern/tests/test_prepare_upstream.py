@@ -24,6 +24,9 @@ process_selection ()
         ;;
     esac
 }
+    cmake \\
+        -DCMAKE_TOOLCHAIN_FILE=../Source/cmake/AROS.cmake \\
+        ..
 """
 TOOLCHAIN = """SET(CMAKE_SYSTEM_NAME Generic)
 SET(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "Flags used by the C compiler during RELEASE builds.")
@@ -53,6 +56,9 @@ def main() -> int:
         rebuild = (source / "rebuild.sh").read_text(encoding="utf-8")
         toolchain = (source / "Source" / "cmake" / "AROS.cmake").read_text(encoding="utf-8")
         assert "ODYSSEY_SDK_DIR" in rebuild
+        assert "ODYSSEY_COMPILER_LAUNCHER" in rebuild
+        assert "CMAKE_C_COMPILER_LAUNCHER" in rebuild
+        assert "CMAKE_CXX_COMPILER_LAUNCHER" in rebuild
         assert 'ODYSSEY_OPT_LEVEL "2"' in toolchain
         assert '"-O${ODYSSEY_OPT_LEVEL} -DNDEBUG"' in toolchain
 
