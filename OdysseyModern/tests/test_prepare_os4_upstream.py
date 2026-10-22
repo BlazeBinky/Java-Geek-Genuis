@@ -135,6 +135,10 @@ def main() -> int:
         os4_core_libraries = os4_link_block.split("if (ENABLE_XSLT)", 1)[0]
         assert "-lxslt" not in os4_core_libraries
         assert "-lavformat" not in os4_core_libraries
+        assert "-licui18n" not in os4_core_libraries
+        assert "${ICU_I18N_LIBRARIES}" in os4_core_libraries
+        assert "${ICU_LIBRARIES}" in os4_core_libraries
+        assert "${ICU_DATA_LIBRARIES}" in os4_core_libraries
         assert "if (ENABLE_XSLT)" in os4_link_block
         assert "if (ENABLE_VIDEO OR ENABLE_MEDIA_SOURCE)" in os4_link_block
         assert "-lavformat" in app_cmake.split("else ()", 1)[1], "non-OS4 link dependencies were lost"
