@@ -132,7 +132,8 @@ BUILD_TRIPLET="$(sh "$ICU_SOURCE_DIR/icu4c/source/config.guess")"
   AR=ppc-amigaos-ar \
   RANLIB=ppc-amigaos-ranlib \
   CFLAGS="${AMIGAOS4_ICU_CFLAGS:--O2}" \
-  CXXFLAGS="${AMIGAOS4_ICU_CXXFLAGS:--O2}" \
+  CXXFLAGS="${AMIGAOS4_ICU_CXXFLAGS:--O2} -athread=native" \
+  LIBS="${AMIGAOS4_ICU_LIBS:--lpthread}" \
   "$ICU_CONFIGURE" \
     --build="$BUILD_TRIPLET" \
     --host=powerpc-unknown-amigaos \
