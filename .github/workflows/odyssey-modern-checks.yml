@@ -12,9 +12,11 @@ on:
 permissions:
   contents: read
 
-# Cancel obsolete expensive PPC build attempts when a newer fix is pushed.
+# Keep fast checks fresh without terminating multi-hour cross-compiles on every
+# documentation/test commit. Only a newer explicit full-build commit cancels an
+# older full build; ordinary pushes run in the separate "checks" group.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[os4-build]') && 'full-build' || 'checks' }}
   cancel-in-progress: true
 
 jobs:
