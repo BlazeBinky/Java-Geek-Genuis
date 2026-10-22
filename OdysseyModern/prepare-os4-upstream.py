@@ -253,7 +253,7 @@ def main() -> int:
         "    -lswscale\n"
         "    -lpsl\n"
         "    -latomic\n"
-        "    \${ZLIB_LIBRARIES}\n"
+        "    ${ZLIB_LIBRARIES}\n"
         ")\n"
     )
     app_new = (
@@ -268,7 +268,7 @@ def main() -> int:
         "        -lz -lcairo -lpixman -lfontconfig -lfreetype2 -lxml2 -lcurl\n"
         "        -ljpeg -lpng -lssl -lcrypto -licui18n -licuuc -licudata\n"
         "        -lsqlite3 -ldebug -lopenurl -lrexxsyslib -liconv -lpsl -latomic\n"
-        "        \${ZLIB_LIBRARIES}\n"
+        "        ${ZLIB_LIBRARIES}\n"
         "    )\n"
         "    if (ENABLE_XSLT)\n"
         "        list(APPEND OdysseyWebBrowser_LIBRARIES -lxslt)\n"
