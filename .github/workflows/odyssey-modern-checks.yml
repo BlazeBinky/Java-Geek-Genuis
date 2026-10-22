@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: "3.x"
       - name: Check Python syntax
-        run: python -m py_compile OdysseyModern/prepare-upstream.py OdysseyModern/prepare-os4-upstream.py OdysseyModern/tests/test_prepare_upstream.py OdysseyModern/tests/test_prepare_os4_upstream.py OdysseyModern/tests/test_compare_reports.py OdysseyModern/tests/test_icu_platform_fragment.py OdysseyModern/benchmarks/compare-reports.py OdysseyModern/tests/check_html_scripts.py
+        run: python -m py_compile OdysseyModern/prepare-upstream.py OdysseyModern/prepare-os4-upstream.py OdysseyModern/tests/test_prepare_upstream.py OdysseyModern/tests/test_prepare_os4_upstream.py OdysseyModern/tests/test_compare_reports.py OdysseyModern/tests/test_icu_platform_fragment.py OdysseyModern/tests/test_os4_thread_preflight.py OdysseyModern/benchmarks/compare-reports.py OdysseyModern/tests/check_html_scripts.py
       - name: Test downstream patch application
         run: python OdysseyModern/tests/test_prepare_upstream.py
       - name: Test AmigaOS 4 source-port patcher
@@ -39,6 +39,8 @@ jobs:
         run: python OdysseyModern/tests/test_compare_reports.py
       - name: Test ICU target make-fragment staging
         run: python OdysseyModern/tests/test_icu_platform_fragment.py
+      - name: Test early native-thread linker preflight
+        run: python OdysseyModern/tests/test_os4_thread_preflight.py
       - name: Check browser test JavaScript syntax
         run: python OdysseyModern/tests/check_html_scripts.py
       - name: Check shell syntax
