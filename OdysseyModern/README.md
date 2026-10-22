@@ -1,39 +1,41 @@
 # Odyssey Modernization Workbench
 
-This directory is an isolated modernization/build layer for the upstream Odyssey Web Browser source. It does **not** replace or copy the upstream WebKit engine.
+This directory is a downstream modernization and build layer for [deadwood2/OdysseyWebBrowser](https://github.com/deadwood2/OdysseyWebBrowser), kept isolated from this profile repository's existing files. It does not replace or vendor the entire upstream WebKit engine.
 
 ## Upstream and target
 
-- Upstream: https://github.com/deadwood2/OdysseyWebBrowser
 - Source branch: `odyssey`
-- Upstream build instructions currently describe an **x86_64 AROS** build using an AROS cross-compiler/SDK. That is not the same target as AmigaOS 4.1 Update 3; a native AmigaOS 4 build needs its own supported toolchain and platform-port work.
-- The engine is a large WebKit codebase. A new UI or a few patches cannot make an old engine fully compatible with today's websites.
+- The upstream build instructions document **x86_64 AROS** using the AROS cross-compiler/SDK. That is **not** the same binary target as AmigaOS 4.1 Update 3. A native OS4/PPC build requires a supported OS4 toolchain and platform port; this branch does not claim that port exists.
+- The MUI configuration already enables JIT and FTL JIT on x86_64. Features such as WebAssembly, WebCrypto, Web Audio, Service Workers and WebGL are disabled or unavailable in the upstream MUI configuration; do not force them on without fixing and testing their implementations.
+- See [platform/performance notes](PLATFORM_AND_PERFORMANCE.md).
 
-## Get the real source
+## Build the source
 
-Run `./OdysseyModern/fetch-and-build-aros.sh` from this repository on Linux/WSL, or run `OdysseyModern/fetch-source.ps1` on Windows to download and unpack the upstream branch. Source is fetched from the original project, not vendored here.
+On Linux/WSL with the AROS SDK installed as described in the [upstream build guide](https://github.com/deadwood2/OdysseyWebBrowser/blob/odyssey/README.md):
 
-## Build (AROS x86_64)
+1. Ensure `x86_64-aros-gcc` and `x86_64-aros-g++` are on `PATH`.
+2. If the SDK is not located beside the compiler installation, set `ODYSSEY_SDK_DIR` to its `Development` directory.
+3. Run `./OdysseyModern/fetch-and-build-aros.sh` from the repository root.
 
-1. Install the AROS cross compiler and SDK following the instructions in the upstream README: https://github.com/deadwood2/OdysseyWebBrowser/blob/odyssey/README.md
-2. Confirm `x86_64-aros-gcc` and `x86_64-aros-g++` are on `PATH`.
-3. Run `./OdysseyModern/fetch-and-build-aros.sh`.
-4. The script invokes the upstream `rebuild.sh`, then builds `cross-build-x86_64-aros`.
+The build script fetches the upstream branch, applies checked downstream changes to make the SDK path portable and set compiler optimization levels, automatically configures x86_64 AROS Release, chooses conservative build parallelism based on RAM, and saves build output in `cross-build-x86_64-aros/odyssey-build.log`.
 
-The upstream project notes that compilation is resource-intensive (its documented examples use 24–32 GB RAM). A smaller machine may run out of memory.
+The default profile uses `-O2`. To try the experimental `-O3` profile, run:
+```bash
+ODYSSEY_BUILD_PROFILE=fast ./OdysseyModern/fetch-and-build-aros.sh
+```
+`-O3` is a benchmark candidate, not a guarantee of faster pages; it can increase executable size and compile time. Use the same device to compare the browser benchmark before deciding.
 
-## What is and is not implemented here
+The upstream project notes that compilation is very resource-intensive, with documented examples using 24–32 GB RAM. This machine's 8 GB configuration may run out of memory even at one job.
 
-This folder provides repeatable source acquisition, build orchestration, and a browser compatibility/test plan. It does not claim that the source compiles in this environment, that an executable has been produced, or that modern-site compatibility is complete. No binary has been built or tested by this commit.
+## Tests included
 
-## Modernization order
+Serve the repository root with a local HTTP server, then open these pages in the actual browser binary:
 
-1. Establish a reproducible baseline build and save compiler logs.
-2. Fix compile/runtime regressions without silently changing upstream engine behavior.
-3. Add automated engine tests and a compatibility matrix.
-4. Audit TLS/certificate validation, supported TLS versions, cookies, storage, CSP, mixed content, downloads, and process isolation before treating the browser as safe for daily use.
-5. Update WebKit and its bundled dependencies in coherent upstream-compatible steps; then test current JavaScript, CSS, HTML, HTTP/2/HTTP/3 support, WebAssembly, and real sites. Protocol and platform support depends on the selected port and libraries.
+- `OdysseyModern/tests/modern-web-check.html` — reports basic API/CSS capability signals.
+- `OdysseyModern/benchmarks/browser-benchmark.html` — measures JavaScript, arrays, DOM/layout, and canvas timing; compare the median of five rounds on the same hardware.
 
-## Licensing
+Pushes to this branch run GitHub Actions checks for Python syntax, patch idempotence, shell syntax and whitespace. **Those checks do not compile WebKit or certify browser compatibility.** The first real build and on-target website tests remain outstanding.
 
-Preserve the upstream license and notices when modifying or redistributing Odyssey. Review the license files in the fetched source before distributing binaries.
+## Scope and licensing
+
+The immediate step is a reproducible baseline and performance/feature measurement. Real modernization still requires engine-level fixes, current TLS/certificate validation, storage and security tests, compatibility fixes, and target-platform validation. Preserve upstream copyright/license notices when redistributing source or binaries.
