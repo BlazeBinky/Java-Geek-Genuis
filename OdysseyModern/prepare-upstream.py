@@ -57,11 +57,11 @@ def main() -> int:
         "        -DCMAKE_TOOLCHAIN_FILE=../Source/cmake/AROS.cmake \\\n"
     )
     cmake_new = (
-        "    CMAKE_LAUNCHER_ARGS=()\\n"
-        '    if [[ -n "${ODYSSEY_COMPILER_LAUNCHER:-}" ]]; then\\n'
-        '        CMAKE_LAUNCHER_ARGS+=("-DCMAKE_C_COMPILER_LAUNCHER=${ODYSSEY_COMPILER_LAUNCHER}")\\n'
-        '        CMAKE_LAUNCHER_ARGS+=("-DCMAKE_CXX_COMPILER_LAUNCHER=${ODYSSEY_COMPILER_LAUNCHER}")\\n'
-        "    fi\\n"
+        "    CMAKE_LAUNCHER_ARGS=()\n"
+        '    if [[ -n "${ODYSSEY_COMPILER_LAUNCHER:-}" ]]; then\n'
+        '        CMAKE_LAUNCHER_ARGS+=("-DCMAKE_C_COMPILER_LAUNCHER=${ODYSSEY_COMPILER_LAUNCHER}")\n'
+        '        CMAKE_LAUNCHER_ARGS+=("-DCMAKE_CXX_COMPILER_LAUNCHER=${ODYSSEY_COMPILER_LAUNCHER}")\n'
+        "    fi\n"
         '    cmake "${CMAKE_LAUNCHER_ARGS[@]}" \\\n'
         "        -DCMAKE_TOOLCHAIN_FILE=../Source/cmake/AROS.cmake \\\n"
     )
