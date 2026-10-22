@@ -77,6 +77,37 @@ if [[ ! -f "$HOST_BUILD/config/icucross.mk" || ! -x "$HOST_BUILD/bin/genrb" ]]; 
   ) 2>&1 | tee "$ICU_BUILD_ROOT/icu-host-build.log"
 fi
 
+# ICU's host-side generators run during the target-data build. The generated
+# target data directory is big-endian (icudt55b), but those generators are
+# native Linux executables; pointing u_init() at the incomplete/big-endian
+# target directory makes genbrk fail with U_FILE_ACCESS_ERROR. Direct the two
+# data-generation rules that use "-i $(BUILDDIR)" to the fully built host
+# data tree (icudt55l), while leaving "-d"/output destinations on the target.
+ICU_HOST_DATA_DIR="$HOST_BUILD/data/out/build/icudt55l"
+[[ -d "$ICU_HOST_DATA_DIR" ]] || fail "Host ICU data tree not found: $ICU_HOST_DATA_DIR"
+python3 - "$ICU_SOURCE_DIR/icu4c/source/data/Makefile.in" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+old = "-i $(BUILDDIR)"
+new = "-i $(ICU_HOST_DATA_DIR)"
+old_count = text.count(old)
+new_count = text.count(new)
+if old_count == 2:
+    text = text.replace(old, new)
+elif old_count == 0 and new_count == 2:
+    # Idempotent after an interrupted cross-build.
+    pass
+else:
+    raise SystemExit(
+        "ERROR: ICU data-generation input-directory patch anchor changed; "
+        f"found {old_count} original and {new_count} patched occurrences."
+    )
+path.write_text(text, encoding="utf-8")
+PY
+
 # ICU 55.1 does not know an AmigaOS 4 make fragment. Its own mh-unknown
 # explicitly recommends starting from mh-linux. Use its generic GCC compile
 # and dependency rules, but strip Linux ELF linker options that are not valid
@@ -155,7 +186,7 @@ BUILD_TRIPLET="$(sh "$ICU_SOURCE_DIR/icu4c/source/config.guess")"
   install -m 0644 "$ICU_SOURCE_DIR/icu4c/source/config/mh-unknown" "$ICU_PKGDATA_DIR/config/mh-unknown"
   [[ -s "$ICU_PKGDATA_DIR/config/mh-unknown" ]] || fail "ICU target platform fragment was not staged: $ICU_PKGDATA_DIR/config/mh-unknown"
 
-  make -j"${ODYSSEY_ICU_TARGET_JOBS:-1}"
+  ICU_HOST_DATA_DIR="$HOST_BUILD/data/out/build/icudt55l" make -j"${ODYSSEY_ICU_TARGET_JOBS:-1}"
   make install
 ) 2>&1 | tee "$ICU_BUILD_ROOT/icu-target-build.log"
 
