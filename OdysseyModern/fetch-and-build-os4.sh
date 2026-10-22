@@ -181,20 +181,20 @@ detect_memory_kb() {
   local raw=""
   if [[ -r /sys/fs/cgroup/memory.max ]]; then
     raw="$(cat /sys/fs/cgroup/memory.max)"
-    if [[ "$raw" =~ ^[0-9]+$ ]]; then printf '%s\\n' "$((raw / 1024))"; return; fi
+    if [[ "$raw" =~ ^[0-9]+$ ]]; then printf '%s\n' "$((raw / 1024))"; return; fi
   fi
   if [[ -r /sys/fs/cgroup/memory/memory.limit_in_bytes ]]; then
     raw="$(cat /sys/fs/cgroup/memory/memory.limit_in_bytes)"
     # cgroup v1 uses a huge sentinel value to mean "no limit".
     if [[ "$raw" =~ ^[0-9]+$ ]] && (( raw < 1125899906842624 )); then
-      printf '%s\\n' "$((raw / 1024))"; return
+      printf '%s\n' "$((raw / 1024))"; return
     fi
   fi
   if [[ -r /proc/meminfo ]]; then
     awk '/MemTotal:/ {print $2; exit}' /proc/meminfo
     return
   fi
-  printf '0\\n'
+  printf '0\n'
 }
 
 if [[ -n "${BUILD_JOBS:-}" ]]; then
