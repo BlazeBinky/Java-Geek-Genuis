@@ -216,7 +216,13 @@ BUILD_TRIPLET="$(sh "$ICU_SOURCE_DIR/icu4c/source/config.guess")"
   install -m 0644 "$ICU_SOURCE_DIR/icu4c/source/config/mh-unknown" "$ICU_PKGDATA_DIR/config/mh-unknown"
   [[ -s "$ICU_PKGDATA_DIR/config/mh-unknown" ]] || fail "ICU target platform fragment was not staged: $ICU_PKGDATA_DIR/config/mh-unknown"
 
-  ICU_HOST_DATA_DIR="$HOST_BUILD/data/out/build/icudt55l" make -j"${ODYSSEY_ICU_TARGET_JOBS:-1}"
+  # pkgdata's default Linux path asks host genccode to make an ELF object
+  # from the target-endian PPC archive; ICU 55.1 explicitly rejects that
+  # cross-endian object conversion. -w switches static packaging to generated
+  # C arrays compiled by ppc-amigaos-gcc, so the bytes are placed in PPC objects
+  # by the target compiler and no host ELF object is reused.
+  ICU_HOST_DATA_DIR="$HOST_BUILD/data/out/build/icudt55l" \
+    make PKGDATA_OPTS="-O ../data/icupkg.inc -w" -j"${ODYSSEY_ICU_TARGET_JOBS:-1}"
   make install
 ) 2>&1 | tee "$ICU_BUILD_ROOT/icu-target-build.log"
 
