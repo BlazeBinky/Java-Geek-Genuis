@@ -56,7 +56,7 @@ The script saves logs in `cross-build-x86_64-aros/odyssey-build.log` and verifie
 Serve the repository root with a local HTTP server, then open these pages in the actual browser binary:
 
 - [Capability smoke test](tests/modern-web-check.html) reports basic API and CSS capability signals. An exposed API is not proof of standards conformance.
-- [Performance benchmark](benchmarks/browser-benchmark.html) measures JavaScript loop, array, DOM/layout, and canvas timings over five rounds; compare medians on the same hardware.
+- [Performance benchmark v3](benchmarks/browser-benchmark.html) measures JavaScript arithmetic, array scans, object/property access, string/regex work, DOM/layout, and canvas over five rounds; the report comparer continues to accept old v2 reports. Compare medians on the same hardware.
 
 Pushes to this branch run GitHub Actions checks for Python syntax, both patchers' idempotence, JavaScript syntax, shell syntax and whitespace. A real AmigaOS 4 SDK configuration job can be launched manually from Actions, or triggered by a push commit message containing `[os4-configure]`; it downloads the pinned compiler image and uploads CMake logs. This configuration check is not a full compile. Those checks do not compile WebKit or certify browser compatibility. The native OS4 build, runtime startup, real HTTPS websites, compatibility and performance still require target testing.
 
