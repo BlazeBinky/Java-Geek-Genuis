@@ -15,6 +15,23 @@ command -v make >/dev/null 2>&1 || fail "make is required."
 command -v x86_64-aros-gcc >/dev/null 2>&1 || fail "x86_64-aros-gcc not found. Install the AROS cross compiler and SDK first."
 command -v x86_64-aros-g++ >/dev/null 2>&1 || fail "x86_64-aros-g++ not found. Install the AROS cross compiler and SDK first."
 
+CCACHE_MODE="${ODYSSEY_CCACHE:-auto}"
+USE_CCACHE=0
+case "$CCACHE_MODE" in
+  auto) if command -v ccache >/dev/null 2>&1; then USE_CCACHE=1; fi ;;
+  on) command -v ccache >/dev/null 2>&1 || fail "ODYSSEY_CCACHE=on, but ccache is not installed."; USE_CCACHE=1 ;;
+  off) ;;
+  *) fail "ODYSSEY_CCACHE must be auto, on, or off." ;;
+esac
+if [[ "$USE_CCACHE" == "1" ]]; then
+  export CCACHE_DIR="${CCACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/odyssey-ccache-aros}"
+  mkdir -p "$CCACHE_DIR"
+  export ODYSSEY_COMPILER_LAUNCHER=ccache
+  printf 'Compiler cache: enabled (%s)\n' "$CCACHE_DIR"
+else
+  unset ODYSSEY_COMPILER_LAUNCHER || true
+  printf 'Compiler cache: unavailable/disabled\n'
+fi
 case "$PROFILE" in
   balanced) export ODYSSEY_OPT_LEVEL=2 ;;
   fast)     export ODYSSEY_OPT_LEVEL=3 ;;
@@ -82,7 +99,13 @@ printf 'Verified: JavaScriptCore JIT and FTL JIT are enabled.\n'
 printf 'Upstream revision: %s\n' "$(git rev-parse HEAD)"
 
 printf '\nStarting compile. A low-memory PC may still run out of memory; the upstream README reports builds using 24–32 GB RAM.\n'
+BUILD_START=$SECONDS
+if [[ "$USE_CCACHE" == "1" ]]; then ccache --zero-stats; fi
 cmake --build "$BUILD_DIR" --parallel "$JOBS" 2>&1 | tee "$BUILD_DIR/odyssey-build.log"
-
-printf '\nBuild command completed. Check cross-build-x86_64-aros/bin and run in a matching x86_64 AROS environment.\n'
+BUILD_SECONDS=$((SECONDS - BUILD_START))
+printf '\nBuild command completed in %s seconds. Check cross-build-x86_64-aros/bin and run in a matching x86_64 AROS environment.\n' "$BUILD_SECONDS"
+if [[ "$USE_CCACHE" == "1" ]]; then
+  printf '\nCompiler-cache statistics (these affect build time, not page-rendering speed):\n'
+  ccache --show-stats
+fi
 printf 'No browser compatibility claim is made until the produced binary passes OdysseyModern/tests and real-site tests.\n'
