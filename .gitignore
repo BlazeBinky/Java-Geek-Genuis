@@ -1,6 +1,8 @@
 # Downloaded Odyssey upstream source and generated build outputs
 /odyssey-upstream/
+/odyssey-upstream-os4/
 /cross-build-x86_64-aros/
+/cross-build-amigaos4/
 /build-odyssey/
 /OdysseyModern/build/
 
