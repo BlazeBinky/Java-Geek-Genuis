@@ -16,6 +16,7 @@ else
 fi
 PROFILE="${ODYSSEY_BUILD_PROFILE:-balanced}"
 MEDIA="${ODYSSEY_OS4_MEDIA:-off}"
+XSLT="${ODYSSEY_OS4_XSLT:-off}"
 
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 for tool in git python3 cmake make ppc-amigaos-gcc ppc-amigaos-g++; do
@@ -31,6 +32,11 @@ case "$MEDIA" in
   off) MEDIA_FLAG=OFF ;;
   on)  MEDIA_FLAG=ON ;;
   *) fail "ODYSSEY_OS4_MEDIA must be 'on' or 'off'." ;;
+esac
+case "$XSLT" in
+  off) XSLT_FLAG=OFF ;;
+  on)  XSLT_FLAG=ON ;;
+  *) fail "ODYSSEY_OS4_XSLT must be 'on' or 'off'." ;;
 esac
 
 # Support both the historical SDK layout and current AmigaGCConDocker layout.
