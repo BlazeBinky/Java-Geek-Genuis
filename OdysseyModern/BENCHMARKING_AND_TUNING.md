@@ -28,7 +28,7 @@ The Windows wrapper persists its cache under `%LOCALAPPDATA%\OdysseyBrowser\ccac
 - `balanced` means GCC `-O2`; use this first while fixing platform-port build issues.
 - `fast` means GCC `-O3`; it can make the executable larger and may not improve every workload. Compare medians from the same hardware using `benchmarks/browser-benchmark.html`.
 - `BUILD_JOBS` (or `-Jobs` in PowerShell) changes compile parallelism. More jobs can make builds faster but can exhaust RAM. Odyssey's own build guide reports large memory requirements; start conservatively on an 8 GB machine.
-- `AMIGAOS4_CPU_FLAGS` lets an expert supply flags for the **actual target PPC CPU**. There is deliberately no hard-coded G3/G4/G5/embedded CPU flag: unsupported instruction flags can produce a binary that crashes on another OS4 machine. Confirm the CPU model and compiler support before setting it.
+- `AMIGAOS4_CPU_FLAGS` lets an expert supply flags for the **actual target PPC CPU**; both Docker wrappers forward it into the container. Example (only after confirming the real CPU): `AMIGAOS4_CPU_FLAGS="-mcpu=750" bash OdysseyModern/run-os4-docker.sh`, or `-CpuFlags "-mcpu=750"` with PowerShell. There is deliberately no hard-coded G3/G4/G5/embedded CPU flag: unsupported instruction flags can produce a binary that crashes on another OS4 machine. Confirm the CPU model and compiler support before setting it.
 
 ## Runtime performance limits
 
