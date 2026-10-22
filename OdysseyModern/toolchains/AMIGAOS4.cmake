@@ -37,7 +37,7 @@ else ()
     set(_amigaos4_mui_include "/usr/ppc-amigaos/SDK/MUI/C/include")
 endif ()
 
-set(_amigaos4_common_flags "-D__USE_INLINE__ -Wno-expansion-to-defined -D_GNU_SOURCE")
+set(_amigaos4_common_flags "-D__USE_INLINE__ -Wno-expansion-to-defined -D_GNU_SOURCE -athread=native")
 if (IS_DIRECTORY "${_amigaos4_mui_include}")
     string(APPEND _amigaos4_common_flags " -I${_amigaos4_mui_include}")
 else ()
