@@ -17,6 +17,30 @@ for tool in git make ppc-amigaos-gcc ppc-amigaos-g++ ppc-amigaos-ar ppc-amigaos-
   command -v "$tool" >/dev/null 2>&1 || fail "$tool is required to cross-build ICU."
 done
 
+CCACHE_MODE="${ODYSSEY_CCACHE:-auto}"
+USE_CCACHE=0
+case "$CCACHE_MODE" in
+  auto) if command -v ccache >/dev/null 2>&1; then USE_CCACHE=1; fi ;;
+  on) command -v ccache >/dev/null 2>&1 || fail "ODYSSEY_CCACHE=on but ccache is not installed."; USE_CCACHE=1 ;;
+  off) ;;
+  *) fail "ODYSSEY_CCACHE must be auto, on, or off." ;;
+esac
+HOST_CC=gcc
+HOST_CXX=g++
+TARGET_CC=ppc-amigaos-gcc
+TARGET_CXX=ppc-amigaos-g++
+if [[ "$USE_CCACHE" == "1" ]]; then
+  export CCACHE_DIR="${CCACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/odyssey-ccache}"
+  mkdir -p "$CCACHE_DIR"
+  HOST_CC="ccache gcc"
+  HOST_CXX="ccache g++"
+  TARGET_CC="ccache ppc-amigaos-gcc"
+  TARGET_CXX="ccache ppc-amigaos-g++"
+  printf 'ICU compiler cache enabled (%s)\n' "$CCACHE_DIR"
+else
+  printf 'ICU compiler cache unavailable/disabled\n'
+fi
+
 if [[ -d "$ICU_SOURCE_DIR/.git" ]]; then
   git -C "$ICU_SOURCE_DIR" fetch --depth=1 origin "refs/tags/$ICU_TAG:refs/tags/$ICU_TAG"
   git -C "$ICU_SOURCE_DIR" checkout --detach "$ICU_TAG"
@@ -39,7 +63,7 @@ if [[ ! -f "$HOST_BUILD/config/icucross.mk" || ! -x "$HOST_BUILD/bin/genrb" ]]; 
   printf '\nConfiguring host ICU tools from pinned revision %s...\n' "$ICU_REVISION"
   (
     cd "$HOST_BUILD"
-    "$ICU_CONFIGURE" \
+    CC="$HOST_CC" CXX="$HOST_CXX" "$ICU_CONFIGURE" \
       --prefix="$ICU_BUILD_ROOT/host-install" \
       --disable-shared --enable-static \
       --with-data-packaging=static \
@@ -53,8 +77,8 @@ printf '\nConfiguring target ICU for AmigaOS 4 PPC...\n'
 BUILD_TRIPLET="$(sh "$ICU_SOURCE_DIR/icu4c/source/config.guess")"
 (
   cd "$TARGET_BUILD"
-  CC=ppc-amigaos-gcc \
-  CXX=ppc-amigaos-g++ \
+  CC="$TARGET_CC" \
+  CXX="$TARGET_CXX" \
   AR=ppc-amigaos-ar \
   RANLIB=ppc-amigaos-ranlib \
   CFLAGS="${AMIGAOS4_ICU_CFLAGS:--O2}" \
