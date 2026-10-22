@@ -37,9 +37,9 @@ if ($Jobs -gt 0) {
 $dockerArgs += @($Image, "bash", "./OdysseyModern/fetch-and-build-os4.sh")
 Write-Host "Starting experimental AmigaOS 4 PPC cross-build."
 Write-Host "Profile: $Profile | Media: $Media | XSLT: $Xslt | Jobs: $(if ($Jobs -gt 0) { $Jobs } else { 'auto' })"
-Write-Host "Compiler logs will be under odyssey-upstream-os4/cross-build-amigaos4/."
+Write-Host "Compiler logs will be under cross-build-amigaos4/."
 Write-Host "This does not promise the newer Odyssey engine is already ported to OS4."
 & docker @dockerArgs
 if ($LASTEXITCODE -ne 0) {
-    throw "Cross-build failed. Inspect odyssey-upstream-os4/cross-build-amigaos4/odyssey-configure.log and odyssey-build.log."
+    throw "Cross-build failed. Inspect cross-build-amigaos4/odyssey-configure.log and odyssey-build.log."
 }
