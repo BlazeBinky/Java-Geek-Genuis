@@ -3,6 +3,9 @@ set -Eeuo pipefail
 
 REPO_URL="https://github.com/deadwood2/OdysseyWebBrowser.git"
 BRANCH="odyssey"
+# Pin the tested upstream state so performance/build results stay reproducible.
+# Override with ODYSSEY_UPSTREAM_REF=odyssey to follow the moving branch.
+UPSTREAM_REF="${ODYSSEY_UPSTREAM_REF:-8e44b6d8d2e8c57a59a878152b81304e220ceb7a}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="${ODYSSEY_SOURCE_DIR:-$PWD/odyssey-upstream-os4}"
 if [[ -n "${AMIGAOS4_SDK_ROOT:-}" ]]; then
@@ -146,13 +149,16 @@ if [[ -d "$SOURCE_DIR/.git" ]]; then
     esac
   done < <(git -C "$SOURCE_DIR" status --porcelain)
 
-  git -C "$SOURCE_DIR" fetch --depth=1 origin "$BRANCH"
-  git -C "$SOURCE_DIR" checkout --detach -f "origin/$BRANCH"
-  git -C "$SOURCE_DIR" reset --hard "origin/$BRANCH"
+  git -C "$SOURCE_DIR" fetch --depth=1 origin "$UPSTREAM_REF"
+  git -C "$SOURCE_DIR" checkout --detach -f FETCH_HEAD
+  git -C "$SOURCE_DIR" reset --hard FETCH_HEAD
   rm -f "$SOURCE_DIR/Source/WTF/wtf/OSAllocatorAmigaOS4.cpp" "$SOURCE_DIR/Source/WTF/wtf/strcasecmpAmigaOS4.cpp"
 else
   [[ ! -e "$SOURCE_DIR" ]] || fail "Source path exists but is not a clean Git checkout: $SOURCE_DIR"
-  git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$SOURCE_DIR"
+  git init "$SOURCE_DIR"
+  git -C "$SOURCE_DIR" remote add origin "$REPO_URL"
+  git -C "$SOURCE_DIR" fetch --depth=1 origin "$UPSTREAM_REF"
+  git -C "$SOURCE_DIR" checkout --detach FETCH_HEAD
 fi
 
 python3 "$SCRIPT_DIR/prepare-os4-upstream.py" "$SOURCE_DIR"
@@ -171,7 +177,7 @@ if [[ -f "$BUILD_DIR/CMakeCache.txt" ]] && ! grep -Fq "$SCRIPT_DIR/toolchains/AM
   fail "Build directory already has a different toolchain configured. Choose a fresh ODYSSEY_SOURCE_DIR."
 fi
 
-printf 'Source revision: %s\nSDK root: %s\nProfile: %s (-O%s)\nMedia build: %s\nXSLT: %s\n' "$REVISION" "$SDK_ROOT" "$PROFILE" "$ODYSSEY_OPT_LEVEL" "$MEDIA" "$XSLT"
+printf 'Source revision: %s\nUpstream ref: %s\nSDK root: %s\nProfile: %s (-O%s)\nMedia build: %s\nXSLT: %s\n' "$REVISION" "$UPSTREAM_REF" "$SDK_ROOT" "$PROFILE" "$ODYSSEY_OPT_LEVEL" "$MEDIA" "$XSLT"
 printf 'Configuring experimental AmigaOS 4 PPC build. The newer upstream branch may require additional OS4 platform-port fixes.\n'
 
 XSLT_ARGS=(-DENABLE_XSLT="$XSLT_FLAG")
