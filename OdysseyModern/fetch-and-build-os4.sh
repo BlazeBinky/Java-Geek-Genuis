@@ -10,7 +10,7 @@ PROFILE="${ODYSSEY_BUILD_PROFILE:-balanced}"
 MEDIA="${ODYSSEY_OS4_MEDIA:-off}"
 
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
-for tool in git python3 cmake make ppc-amigaos-gcc ppc-amigaos-g++; do
+for tool in git cmake make ppc-amigaos-gcc ppc-amigaos-g++; do
   command -v "$tool" >/dev/null 2>&1 || fail "$tool not found. Use an AmigaOS 4 PPC cross-compiler environment with the matching SDK."
 done
 
@@ -20,8 +20,8 @@ case "$PROFILE" in
   *) fail "ODYSSEY_BUILD_PROFILE must be 'balanced' or 'fast'." ;;
 esac
 case "$MEDIA" in
-  off) MEDIA_FLAGS=(-DENABLE_VIDEO=OFF -DENABLE_MEDIA_SOURCE=OFF) ;;
-  on)  MEDIA_FLAGS=(-DENABLE_VIDEO=ON -DENABLE_MEDIA_SOURCE=ON) ;;
+  off) MEDIA_FLAG=OFF ;;
+  on)  MEDIA_FLAG=ON ;;
   *) fail "ODYSSEY_OS4_MEDIA must be 'on' or 'off'." ;;
 esac
 
@@ -72,9 +72,8 @@ cmake -S "$SOURCE_DIR" -B "$BUILD_DIR" \
   -DFREETYPE_INCLUDE_DIRS="$FREETYPE_INCLUDE_DIR" \
   -DLIBXML2_INCLUDE_DIR="$LIBXML2_INCLUDE_DIR" \
   -DLIBXSLT_INCLUDE_DIR="$LIBXSLT_INCLUDE_DIR" \
-  -DENABLE_VIDEO="$( [[ "$MEDIA" == "on" ]] && printf ON || printf OFF )" \
-  -DENABLE_MEDIA_SOURCE="$( [[ "$MEDIA" == "on" ]] && printf ON || printf OFF )" \
-  "${MEDIA_FLAGS[@]}" 2>&1 | tee "$BUILD_DIR/odyssey-configure.log"
+  -DENABLE_VIDEO="$MEDIA_FLAG" \
+  -DENABLE_MEDIA_SOURCE="$MEDIA_FLAG" 2>&1 | tee "$BUILD_DIR/odyssey-configure.log"
 
 # WebKit is a heavy C++ codebase. Keep memory use conservative unless overridden.
 if [[ -n "${BUILD_JOBS:-}" ]]; then
