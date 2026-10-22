@@ -10,7 +10,7 @@ if (Test-Path $extract) { Remove-Item $extract -Recurse -Force }
 Expand-Archive -Path $zip -DestinationPath $extract -Force
 $folder = Get-ChildItem $extract -Directory | Select-Object -First 1
 if (-not $folder) { throw "Archive extraction did not contain a source directory." }
-if (Test-Path $root) { Remove-Item $root -Recurse -Force }
+if (Test-Path $root) { throw "Destination already exists: $root. Move it aside or remove it yourself; this script will not overwrite source files." }
 Move-Item $folder.FullName $root
 Remove-Item $extract -Recurse -Force
 Remove-Item $zip -Force
