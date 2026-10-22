@@ -44,28 +44,32 @@ void* OSAllocator::reserveUncommitted(size_t bytes, Usage usage, bool writable, 
     if (!bytes || executable)
         return nullptr;
 
-    // Do not eagerly clear a reservation: WebKit may commit it in ranges.
-    // commit() clears each newly committed range before the engine can use it.
+    // OSAllocator::reserveUncommitted promises zeroed memory. AmigaOS 4
+    // lacks the VM reservation/commit split used by POSIX ports, so allocate
+    // aligned private memory and have Exec clear it exactly once here.
     return IExec->AllocVecTags(bytes,
         AVT_Type, MEMF_PRIVATE,
         AVT_Alignment, AmigaOS4PageSize,
+        AVT_ClearWithValue, 0,
         TAG_END);
 }
 
 void* OSAllocator::reserveAndCommit(size_t bytes, Usage usage, bool writable, bool executable, bool includesGuardPages)
 {
-    void* allocation = reserveUncommitted(bytes, usage, writable, executable, includesGuardPages);
-    if (allocation && bytes)
-        memset(allocation, 0, bytes);
-    return allocation;
+    // reserveUncommitted already returns zeroed memory. Clearing the same
+    // allocation again here would double the initial memory-write cost.
+    return reserveUncommitted(bytes, usage, writable, executable, includesGuardPages);
 }
 
 void OSAllocator::commit(void* address, size_t bytes, bool writable, bool executable)
 {
+    // A reservation starts zeroed and decommit() below zeroes every released
+    // range. Since this port cannot physically decommit pages, commit is only
+    // the logical transition; repeating memset here would be redundant.
+    (void)address;
+    (void)bytes;
     (void)writable;
     (void)executable;
-    if (address && bytes)
-        memset(address, 0, bytes);
 }
 
 void OSAllocator::decommit(void* address, size_t bytes)
