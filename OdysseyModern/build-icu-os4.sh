@@ -79,10 +79,11 @@ fi
 
 # ICU's host-side generators run during the target-data build. The generated
 # target data directory is big-endian (icudt55b), but those generators are
-# native Linux executables; pointing u_init() at the incomplete/big-endian
-# target directory makes genbrk fail with U_FILE_ACCESS_ERROR. Direct the two
-# data-generation rules that use "-i $(BUILDDIR)" to the fully built host
-# data tree (icudt55l), while leaving "-d"/output destinations on the target.
+# native Linux executables; pointing u_init() at the incomplete target
+# data directory makes them fail with U_FILE_ACCESS_ERROR. All 29 "-i $(BUILDDIR)"
+# inputs are auxiliary data read by host-native tools, so redirect those inputs
+# to the completed little-endian host data tree (icudt55l) while leaving every
+# "-d"/"-o" generated output directed to the big-endian PPC target data tree.
 ICU_HOST_DATA_DIR="$HOST_BUILD/data/out/build/icudt55l"
 [[ -d "$ICU_HOST_DATA_DIR" ]] || fail "Host ICU data tree not found: $ICU_HOST_DATA_DIR"
 python3 - "$ICU_SOURCE_DIR/icu4c/source/data/Makefile.in" <<'PY'
