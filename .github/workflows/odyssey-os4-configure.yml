@@ -1,0 +1,46 @@
+name: Experimental AmigaOS 4 configure check
+
+on:
+  push:
+    branches:
+      - odyssey-modern-browser-work
+    paths:
+      - "OdysseyModern/prepare-os4-upstream.py"
+      - "OdysseyModern/fetch-and-build-os4.sh"
+      - "OdysseyModern/toolchains/AMIGAOS4.cmake"
+      - ".github/workflows/odyssey-os4-configure.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  configure-os4:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out project
+        uses: actions/checkout@v4
+
+      - name: Configure Odyssey for AmigaOS 4 PPC using the pinned SDK image
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker pull walkero/amigagccondocker:os4-gcc11-3.5.2
+          docker run --rm --init \
+            --volume "$PWD:/opt/code" \
+            --workdir /opt/code \
+            --env ODYSSEY_CONFIGURE_ONLY=1 \
+            --env ODYSSEY_BUILD_PROFILE=balanced \
+            walkero/amigagccondocker:os4-gcc11-3.5.2 \
+            bash OdysseyModern/fetch-and-build-os4.sh
+
+      - name: Upload configure logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: odyssey-os4-configure-logs
+          path: |
+            cross-build-amigaos4/odyssey-configure.log
+            odyssey-upstream-os4/Source/CMakeCache.txt
+          if-no-files-found: warn
