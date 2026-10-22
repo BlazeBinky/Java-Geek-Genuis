@@ -63,6 +63,8 @@ button{font:inherit;padding:10px 15px;cursor:pointer}pre{white-space:pre-wrap;ba
     function canvasBench() {
         if (!ctx) return {ms:null, checksum:"canvas unavailable"};
         var t = now(), i, x, y, r;
+        // Start each measured round from the same canvas state.
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         for (i = 0; i < 2200; i++) {
             x = (i * 37) % 640;
             y = (i * 61) % 220;
