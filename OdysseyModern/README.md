@@ -31,13 +31,15 @@ These wrappers use the pinned `walkero/amigagccondocker:os4-gcc11-3.5.2` image b
 bash OdysseyModern/fetch-and-build-os4.sh
 ```
 
-The first goal is to collect real configure/build errors and port the missing OS4 shims forward. The baseline disables XSLT because the pinned AmigaGCConDocker SDK image does not include the target libxslt headers; install a target libxslt library and headers, then set `ODYSSEY_OS4_XSLT=on` to enable it. This keeps the baseline from failing before CMake because of that optional component. The script automatically runs `prepare-os4-upstream.py` on a fresh or reset upstream `odyssey` checkout; it fails closed if expected source patterns have changed and preserves unrelated local edits. Its OS4 allocator currently uses page-aligned `AllocVecTags` memory and clears decommitted ranges instead of releasing physical pages, so it may retain more memory than a true virtual-memory backend. Guard pages are not implemented. Default `ODYSSEY_BUILD_PROFILE=balanced` uses `-O2`. For an experimental `-O3` build:
+The OS4 build now bootstraps **ICU 55.1** from a pinned upstream tag: it first builds the native ICU generator tools, then cross-compiles static ICU libraries for PPC and supplies those target headers/libraries to CMake. It deliberately does not use the macOS-only bundled ICU headers or host Linux libraries. This adds time and memory pressure to the first build, which is why the script defaults to one target compile job. A prior full-build attempt reached C++ compilation but stopped at the missing `unicode/ustring.h`; the current ICU bootstrap is intended to address that dependency, and the resulting target build still needs CI verification.
+
+The baseline disables XSLT because the pinned AmigaGCConDocker SDK image does not include the target libxslt headers; install target libxslt headers/library and set `ODYSSEY_OS4_XSLT=on` to enable it. The script automatically runs `prepare-os4-upstream.py` on a fresh or reset upstream `odyssey` checkout; it fails closed if expected source patterns have changed and preserves unrelated local edits. Its OS4 allocator currently uses page-aligned `AllocVecTags` memory and clears decommitted ranges instead of releasing physical pages, so it may retain more memory than a true virtual-memory backend. Guard pages are not implemented. Default `ODYSSEY_BUILD_PROFILE=balanced` uses `-O2`. For an experimental `-O3` build:
 
 ```bash
 ODYSSEY_BUILD_PROFILE=fast bash OdysseyModern/fetch-and-build-os4.sh
 ```
 
-Media is off by default for the first porting pass. Once all target dependencies are correctly installed, try it with `ODYSSEY_OS4_MEDIA=on`. Neither profile has been compiled or benchmarked in this environment, and neither is currently claimed to produce an OS4 executable.
+Media is off by default for the first porting pass. Once all target dependencies are correctly installed, try it with `ODYSSEY_OS4_MEDIA=on`. The initial PPC compile failed before producing an executable because ICU was missing. The branch now builds ICU as part of the OS4 toolchain workflow and is attempting a clean end-to-end build; no executable is considered deliverable until the linker succeeds and the browser starts on OS4.
 
 ## AROS reference build
 
