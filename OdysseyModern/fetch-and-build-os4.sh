@@ -2,7 +2,6 @@
 set -Eeuo pipefail
 
 REPO_URL="https://github.com/deadwood2/OdysseyWebBrowser.git"
-BRANCH="odyssey"
 # Pin the tested upstream state so performance/build results stay reproducible.
 # Override with ODYSSEY_UPSTREAM_REF=odyssey to follow the moving branch.
 UPSTREAM_REF="${ODYSSEY_UPSTREAM_REF:-8e44b6d8d2e8c57a59a878152b81304e220ceb7a}"
