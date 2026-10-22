@@ -29,13 +29,24 @@ SDK_DIR="${ODYSSEY_SDK_DIR:-$COMPILER_PREFIX/Development}"
 [[ -d "$SDK_DIR/include" ]] || fail "SDK include directory not found at '$SDK_DIR/include'. Set ODYSSEY_SDK_DIR to the AROS SDK Development directory."
 
 if [[ -d "$SOURCE_DIR/.git" ]]; then
+  ORIGIN="$(git -C "$SOURCE_DIR" remote get-url origin)"
+  [[ "$ORIGIN" == "$REPO_URL" || "$ORIGIN" == "${REPO_URL%.git}" ]] || fail "Existing source directory has a different Git origin: $ORIGIN"
+  # Preserve user changes. Only the two files changed by prepare-upstream.py may
+  # be dirty; anything else requires a fresh checkout or a manual backup first.
+  while IFS= read -r status_line; do
+    [[ -z "$status_line" ]] && continue
+    changed_path="${status_line:3}"
+    case "$changed_path" in
+      rebuild.sh|Source/cmake/AROS.cmake) ;;
+      *) fail "Refusing to discard local source changes in '$changed_path'. Back them up or choose a clean ODYSSEY_SOURCE_DIR." ;;
+    esac
+  done < <(git -C "$SOURCE_DIR" status --porcelain)
   git -C "$SOURCE_DIR" fetch --depth=1 origin "$BRANCH"
   git -C "$SOURCE_DIR" checkout "$BRANCH"
   git -C "$SOURCE_DIR" reset --hard "origin/$BRANCH"
 else
   git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$SOURCE_DIR"
 fi
-
 python3 "$SCRIPT_DIR/prepare-upstream.py" "$SOURCE_DIR"
 cd "$SOURCE_DIR"
 [[ -x ./rebuild.sh ]] || fail "Upstream rebuild.sh was not found or is not executable."
@@ -63,7 +74,12 @@ printf '11\n' | ./rebuild.sh
 
 BUILD_DIR="$SOURCE_DIR/cross-build-x86_64-aros"
 [[ -f "$BUILD_DIR/CMakeCache.txt" ]] || fail "CMake configuration did not produce $BUILD_DIR/CMakeCache.txt."
-grep -E 'CMAKE_BUILD_TYPE:STRING=Release|CMAKE_BUILD_TYPE:UNINITIALIZED=Release' "$BUILD_DIR/CMakeCache.txt" >/dev/null || printf 'WARNING: CMake build type not found as expected; inspect CMakeCache.txt.\n'
+grep -E 'CMAKE_BUILD_TYPE:STRING=Release|CMAKE_BUILD_TYPE:UNINITIALIZED=Release' "$BUILD_DIR/CMakeCache.txt" >/dev/null || printf 'WARNING: CMake build type not found as expected; inspect CMakeCache.txt.\\n'
+for feature in ENABLE_JIT ENABLE_FTL_JIT; do
+  grep -E "^$feature:[^=]+=ON$" "$BUILD_DIR/CMakeCache.txt" >/dev/null || fail "$feature is not ON in CMakeCache.txt. This build would miss the x86_64 JIT performance path."
+done
+printf 'Verified: JavaScriptCore JIT and FTL JIT are enabled.\\n'
+printf 'Upstream revision: %s\\n' "$(git rev-parse HEAD)"
 
 printf '\nStarting compile. A low-memory PC may still run out of memory; the upstream README reports builds using 24–32 GB RAM.\n'
 cmake --build "$BUILD_DIR" --parallel "$JOBS" 2>&1 | tee "$BUILD_DIR/odyssey-build.log"
