@@ -17,12 +17,16 @@ button{font:inherit;padding:10px 15px;cursor:pointer}pre{white-space:pre-wrap;ba
 <button id="run">Run benchmark</button>
 <p id="state">Ready.</p>
 <pre id="output">No benchmark results yet.</pre>
+<h2>Machine-readable results</h2>
+<p class="muted">After a run, select and copy this JSON to keep a record or compare builds.</p>
+<textarea id="raw-output" rows="14" readonly style="width:100%;box-sizing:border-box;font:13px/1.4 monospace">No benchmark results yet.</textarea>
 <div id="layout-box"></div>
 <canvas id="canvas" width="640" height="220"></canvas>
 <script>
 (function () {
     "use strict";
     var out = document.getElementById("output");
+    var rawOut = document.getElementById("raw-output");
     var state = document.getElementById("state");
     var button = document.getElementById("run");
     var box = document.getElementById("layout-box");
@@ -98,17 +102,24 @@ button{font:inherit;padding:10px 15px;cursor:pointer}pre{white-space:pre-wrap;ba
                     b.ms.toFixed(1) + " ms; DOM/layout " + c.ms.toFixed(1) + " ms; canvas " +
                     (d.ms === null ? d.ms : d.ms.toFixed(1)) + " ms");
             }
+            var medians = {
+                javascript: median(rounds.javascript),
+                arrays: median(rounds.arrays),
+                layout: median(rounds.layout),
+                canvas: rounds.canvas.length ? median(rounds.canvas) : null
+            };
+            var resultDate = new Date().toISOString();
             var lines = [
-                "Odyssey Browser Performance Bench v1",
+                "Odyssey Browser Performance Bench v2",
                 "User agent: " + navigator.userAgent,
-                "Date: " + new Date().toISOString(),
+                "Date: " + resultDate,
                 "Screen: " + screen.width + "x" + screen.height,
                 "",
                 "Median of five measured rounds (lower is better):",
-                "JavaScript numeric loop: " + median(rounds.javascript).toFixed(1) + " ms",
-                "Array fill + scan: " + median(rounds.arrays).toFixed(1) + " ms",
-                "DOM creation + forced layout: " + median(rounds.layout).toFixed(1) + " ms",
-                "Canvas draw (2200 circles): " + (rounds.canvas.length ? median(rounds.canvas).toFixed(1) + " ms" : "unavailable"),
+                "JavaScript numeric loop: " + medians.javascript.toFixed(1) + " ms",
+                "Array fill + scan: " + medians.arrays.toFixed(1) + " ms",
+                "DOM creation + forced layout: " + medians.layout.toFixed(1) + " ms",
+                "Canvas draw (2200 circles): " + (medians.canvas === null ? "unavailable" : medians.canvas.toFixed(1) + " ms"),
                 "",
                 "Individual rounds:",
                 notes.join("\n"),
@@ -116,7 +127,17 @@ button{font:inherit;padding:10px 15px;cursor:pointer}pre{white-space:pre-wrap;ba
                 "Compare only against the same benchmark version and similar hardware. This is a smoke benchmark, not a browser speed score."
             ];
             out.textContent = lines.join("\n");
-            state.textContent = "Finished. Copy/save the results when comparing builds.";
+            rawOut.value = JSON.stringify({
+                benchmark: "odyssey-browser-performance",
+                version: 2,
+                date: resultDate,
+                userAgent: navigator.userAgent,
+                screen: {width: screen.width, height: screen.height},
+                hardwareConcurrency: navigator.hardwareConcurrency || null,
+                mediansMs: medians,
+                roundsMs: rounds
+            }, null, 2);
+            state.textContent = "Finished. Copy/save both the summary and JSON when comparing builds.";
             button.disabled = false;
         }, 30);
     }
