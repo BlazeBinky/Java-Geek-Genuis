@@ -175,17 +175,37 @@ if [[ "${ODYSSEY_CONFIGURE_ONLY:-0}" == "1" ]]; then
 fi
 
 # WebKit is a heavy C++ codebase. Keep memory use conservative unless overridden.
+# Read the container's memory cap first. /proc/meminfo can expose host RAM
+# inside Docker, which would otherwise cause parallel C++ compiles to OOM.
+detect_memory_kb() {
+  local raw=""
+  if [[ -r /sys/fs/cgroup/memory.max ]]; then
+    raw="$(cat /sys/fs/cgroup/memory.max)"
+    if [[ "$raw" =~ ^[0-9]+$ ]]; then printf '%s\\n' "$((raw / 1024))"; return; fi
+  fi
+  if [[ -r /sys/fs/cgroup/memory/memory.limit_in_bytes ]]; then
+    raw="$(cat /sys/fs/cgroup/memory/memory.limit_in_bytes)"
+    # cgroup v1 uses a huge sentinel value to mean "no limit".
+    if [[ "$raw" =~ ^[0-9]+$ ]] && (( raw < 1125899906842624 )); then
+      printf '%s\\n' "$((raw / 1024))"; return
+    fi
+  fi
+  if [[ -r /proc/meminfo ]]; then
+    awk '/MemTotal:/ {print $2; exit}' /proc/meminfo
+    return
+  fi
+  printf '0\\n'
+}
+
 if [[ -n "${BUILD_JOBS:-}" ]]; then
   JOBS="$BUILD_JOBS"
-elif [[ -r /proc/meminfo ]]; then
-  MEM_KB="$(awk '/MemTotal:/ {print $2}' /proc/meminfo)"
-  if (( MEM_KB < 16000000 )); then JOBS=1
+else
+  MEM_KB="$(detect_memory_kb)"
+  if (( MEM_KB == 0 || MEM_KB < 16000000 )); then JOBS=1
   elif (( MEM_KB < 32000000 )); then JOBS=2
   elif (( MEM_KB < 64000000 )); then JOBS=4
   else JOBS=6
   fi
-else
-  JOBS=1
 fi
 [[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || fail "BUILD_JOBS must be a positive integer."
 
