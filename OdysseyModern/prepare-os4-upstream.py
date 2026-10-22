@@ -20,7 +20,7 @@ ALLOCATOR = r'''/*
  * It does not implement guard pages or a PPC JavaScript JIT.
  */
 #include "config.h"
-#include <wtf/OSAllocator.h>
+#include "OSAllocator.h"
 
 #if OS(AMIGAOS4)
 
