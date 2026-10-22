@@ -18,7 +18,7 @@ PROFILE="${ODYSSEY_BUILD_PROFILE:-balanced}"
 MEDIA="${ODYSSEY_OS4_MEDIA:-off}"
 
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
-for tool in git cmake make ppc-amigaos-gcc ppc-amigaos-g++; do
+for tool in git python3 cmake make ppc-amigaos-gcc ppc-amigaos-g++; do
   command -v "$tool" >/dev/null 2>&1 || fail "$tool not found. Use an AmigaOS 4 PPC cross-compiler environment with the matching SDK."
 done
 
@@ -61,20 +61,30 @@ done
 if [[ -d "$SOURCE_DIR/.git" ]]; then
   ORIGIN="$(git -C "$SOURCE_DIR" remote get-url origin)"
   [[ "$ORIGIN" == "$REPO_URL" || "$ORIGIN" == "${REPO_URL%.git}" ]] || fail "Existing source directory has a different Git origin: $ORIGIN"
+
+  # The patcher edits only these tracked files and adds exactly two expected
+  # source files. Fail closed if the user has other source changes.
   while IFS= read -r status_line; do
     [[ -z "$status_line" ]] && continue
-    fail "Refusing to reset local source changes in '$SOURCE_DIR' (${status_line:3}). Back them up or select a fresh ODYSSEY_SOURCE_DIR."
+    changed_path="${status_line:3}"
+    case "$changed_path" in
+      Source/WTF/wtf/Platform.h|Source/WebCore/platform/mui/BALBase.h|Source/WTF/wtf/PlatformMUI.cmake|Source/WTF/wtf/OSAllocatorAmigaOS4.cpp|Source/WTF/wtf/strcasecmpAmigaOS4.cpp) ;;
+      *) fail "Refusing to reset unrecognized local source change '$changed_path'. Back it up or choose a fresh ODYSSEY_SOURCE_DIR." ;;
+    esac
   done < <(git -C "$SOURCE_DIR" status --porcelain)
+
   git -C "$SOURCE_DIR" fetch --depth=1 origin "$BRANCH"
-  git -C "$SOURCE_DIR" checkout "$BRANCH"
+  git -C "$SOURCE_DIR" checkout -B "$BRANCH" "origin/$BRANCH"
   git -C "$SOURCE_DIR" reset --hard "origin/$BRANCH"
+  rm -f "$SOURCE_DIR/Source/WTF/wtf/OSAllocatorAmigaOS4.cpp" "$SOURCE_DIR/Source/WTF/wtf/strcasecmpAmigaOS4.cpp"
 else
   [[ ! -e "$SOURCE_DIR" ]] || fail "Source path exists but is not a clean Git checkout: $SOURCE_DIR"
   git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$SOURCE_DIR"
 fi
 
+python3 "$SCRIPT_DIR/prepare-os4-upstream.py" "$SOURCE_DIR"
 REVISION="$(git -C "$SOURCE_DIR" rev-parse HEAD)"
-BUILD_DIR="$SOURCE_DIR/cross-build-amigaos4"
+BUILD_DIR="${ODYSSEY_OS4_BUILD_DIR:-$PWD/cross-build-amigaos4}"
 mkdir -p "$BUILD_DIR"
 
 if [[ -f "$BUILD_DIR/CMakeCache.txt" ]] && ! grep -Fq "$SCRIPT_DIR/toolchains/AMIGAOS4.cmake" "$BUILD_DIR/CMakeCache.txt"; then
@@ -88,6 +98,7 @@ cmake -S "$SOURCE_DIR" -B "$BUILD_DIR" \
   -DCMAKE_TOOLCHAIN_FILE="$SCRIPT_DIR/toolchains/AMIGAOS4.cmake" \
   -DCMAKE_BUILD_TYPE=Release \
   -DPORT=MUI \
+  -DODYSSEY_TARGET_AMIGAOS4=ON \
   -DCMAKE_SYSTEM_PROCESSOR=ppc \
   -DCMAKE_C_COMPILER=ppc-amigaos-gcc \
   -DCMAKE_CXX_COMPILER=ppc-amigaos-g++ \
