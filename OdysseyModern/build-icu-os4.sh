@@ -77,6 +77,19 @@ if [[ ! -f "$HOST_BUILD/config/icucross.mk" || ! -x "$HOST_BUILD/bin/genrb" ]]; 
   ) 2>&1 | tee "$ICU_BUILD_ROOT/icu-host-build.log"
 fi
 
+# ICU 55.1 does not know an AmigaOS 4 make fragment. Its own mh-unknown
+# explicitly recommends starting from mh-linux. Use its generic GCC compile
+# and dependency rules, but strip Linux ELF linker options that are not valid
+# or useful for the PPC AmigaOS target; static libraries are requested below.
+cp "$ICU_SOURCE_DIR/icu4c/source/config/mh-linux" "$ICU_SOURCE_DIR/icu4c/source/config/mh-unknown"
+sed -i \
+  -e '/^LD_RPATH[[:space:]]*=/d' \
+  -e '/^LD_RPATH_PRE[[:space:]]*=/d' \
+  -e '/^LD_SONAME[[:space:]]*=/d' \
+  -e '/^LD_SOOPTIONS[[:space:]]*=/d' \
+  -e '/^BIR_LDFLAGS[[:space:]]*=/d' \
+  "$ICU_SOURCE_DIR/icu4c/source/config/mh-unknown"
+
 rm -f "$TARGET_BUILD/config.status"
 printf '\nConfiguring target ICU for AmigaOS 4 PPC...\n'
 BUILD_TRIPLET="$(sh "$ICU_SOURCE_DIR/icu4c/source/config.guess")"
