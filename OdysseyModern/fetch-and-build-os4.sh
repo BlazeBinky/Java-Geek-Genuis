@@ -23,6 +23,31 @@ for tool in git python3 cmake make ppc-amigaos-gcc ppc-amigaos-g++; do
   command -v "$tool" >/dev/null 2>&1 || fail "$tool not found. Use an AmigaOS 4 PPC cross-compiler environment with the matching SDK."
 done
 
+# ccache reduces repeat compilation time without changing the generated code.
+# Docker wrappers mount a persistent host cache at /opt/odyssey-ccache.
+CCACHE_MODE="${ODYSSEY_CCACHE:-auto}"
+CCACHE_ARGS=()
+USE_CCACHE=0
+case "$CCACHE_MODE" in
+  auto)
+    if command -v ccache >/dev/null 2>&1; then USE_CCACHE=1; fi
+    ;;
+  on)
+    command -v ccache >/dev/null 2>&1 || fail "ODYSSEY_CCACHE=on, but ccache is not installed."
+    USE_CCACHE=1
+    ;;
+  off) ;;
+  *) fail "ODYSSEY_CCACHE must be auto, on, or off." ;;
+esac
+if [[ "$USE_CCACHE" == "1" ]]; then
+  export CCACHE_DIR="${CCACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/odyssey-ccache}"
+  mkdir -p "$CCACHE_DIR"
+  CCACHE_ARGS+=("-DCMAKE_C_COMPILER_LAUNCHER=ccache" "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache")
+  printf 'Compiler cache: enabled (%s)\n' "$CCACHE_DIR"
+else
+  printf 'Compiler cache: unavailable/disabled\n'
+fi
+
 case "$PROFILE" in
   balanced) export ODYSSEY_OPT_LEVEL=2 ;;
   fast)     export ODYSSEY_OPT_LEVEL=3 ;;
@@ -141,7 +166,8 @@ cmake -S "$SOURCE_DIR" -B "$BUILD_DIR" \
   -DLIBXML2_INCLUDE_DIR="$LIBXML2_INCLUDE_DIR" \
   -DENABLE_VIDEO="$MEDIA_FLAG" \
   -DENABLE_MEDIA_SOURCE="$MEDIA_FLAG" \
-  "${XSLT_ARGS[@]}" 2>&1 | tee "$BUILD_DIR/odyssey-configure.log"
+  "${XSLT_ARGS[@]}" \
+  "${CCACHE_ARGS[@]}" 2>&1 | tee "$BUILD_DIR/odyssey-configure.log"
 
 if [[ "${ODYSSEY_CONFIGURE_ONLY:-0}" == "1" ]]; then
   printf '\nCMake configuration completed for upstream revision %s. Compile/link/runtime validation remains outstanding.\n' "$REVISION"
@@ -164,6 +190,13 @@ fi
 [[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || fail "BUILD_JOBS must be a positive integer."
 
 printf 'Starting compile with %s job(s). A low-memory host may run out of memory.\n' "$JOBS"
+BUILD_START=$SECONDS
+if [[ "$USE_CCACHE" == "1" ]]; then ccache --zero-stats; fi
 cmake --build "$BUILD_DIR" --parallel "$JOBS" 2>&1 | tee "$BUILD_DIR/odyssey-build.log"
-printf '\nBuild step finished for upstream revision %s.\n' "$REVISION"
+BUILD_SECONDS=$((SECONDS - BUILD_START))
+printf '\nBuild step finished for upstream revision %s in %s seconds.\n' "$REVISION" "$BUILD_SECONDS"
+if [[ "$USE_CCACHE" == "1" ]]; then
+  printf '\nCompiler-cache statistics (these affect build time, not page-rendering speed):\n'
+  ccache --show-stats
+fi
 printf 'This is not yet a verified OS4 application: inspect the log, then test on AmigaOS 4.1 Update 3 hardware/emulator.\n'
