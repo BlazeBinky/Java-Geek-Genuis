@@ -53,6 +53,8 @@ The previous full build stopped inside ICU before reaching WebKit. The first err
 
 The next ICU issue found in the PPC port is that ICU 55.1's generic timezone code can reference a `tzname` array even when the OS4 libc configuration reports that it is unavailable. The bootstrap now patches this guarded fallback in its disposable ICU source checkout and is safe to rerun after a failed build. The static workflow tests pass with the fragment-staging check; a clean full build with both repairs is the next acceptance gate.
 
+The OS4 allocator now uses `MEMF_SHARED` instead of `MEMF_PRIVATE`: the Exec documentation defines private memory as accessible only in the allocating task, while WebKit's worker and GC paths can access shared engine pages. `AVT_Lock, FALSE` also avoids pinning the fallback's retained allocations in RAM. New memory is still zero-initialized and decommitted ranges are cleared before reuse. This is a cross-task correctness and memory-pressure fix; it has not yet been measured on the target device.
+
 Performance remains deliberately conservative until an actual PPC binary can be benchmarked: the default profile is `-O2`, the experimental `fast` profile is `-O3`, and ccache only shortens rebuilds. The current JavaScript engine has no PPC JIT backend, so interpreter performance is still a known major limitation. Do not call it fast or fully modern without target-device measurements and a proper PPC JIT implementation.
 
 ## Native PPC C++ threading correction (October 22, 2026)
