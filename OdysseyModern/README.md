@@ -4,7 +4,7 @@ This directory is a downstream modernization and build layer for [deadwood2/Odys
 
 ## Upstream and target
 
-- Engine source: the upstream `odyssey` branch.
+- Engine source: defaults to the verified upstream `odyssey` snapshot at commit `8e44b6d8d2e8c57a59a878152b81304e220ceb7a` for reproducible builds; set `ODYSSEY_UPSTREAM_REF=odyssey` to intentionally track the moving branch. The exact source SHA is printed in the build log and packaged metadata.
 - The upstream documented active build path is **x86_64 AROS** using the AROS cross-compiler/SDK.
 - For your intended **AmigaOS 4.1 Update 3 / PPC** target, I've added a separate experimental toolchain and build attempt. The latest source branch is not yet proven to compile on OS4; the 2019 [historical OS4 compile branch](https://github.com/deadwood2/OdysseyWebBrowser/tree/jaokim_os4_compile) is used as a porting reference, not substituted for the newer engine. Read [AmigaOS 4 port status](AMIGAOS4_PORT_STATUS.md).
 - The current MUI configuration enables JIT and FTL JIT only for x86_64. On PPC it uses the C-loop JavaScript interpreter, so compiler `-O3` will not magically add a JavaScript JIT. The source patcher recognizes AmigaOS 4 compiler macros, corrects the missing-header reference in `BALBase.h`, and selects an OS4-specific allocator with explicit limitations. Features such as WebAssembly, WebCrypto, Web Audio, Service Workers and WebGL are disabled or unavailable in the upstream MUI configuration; do not force them on without fixing and testing their implementations.
