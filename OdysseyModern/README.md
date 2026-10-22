@@ -25,7 +25,7 @@ On Linux/WSL with Docker, use:
 bash OdysseyModern/run-os4-docker.sh
 ```
 
-These wrappers use the pinned `walkero/amigagccondocker:os4-gcc11-3.5.2` image by default; override it with `ODYSSEY_OS4_DOCKER_IMAGE` on Linux or the `-Image` parameter on Windows. You can bypass Docker and run the SDK-backed script directly, from the repository root:
+These wrappers use the pinned `walkero/amigagccondocker:os4-gcc11-3.5.2` image by default; override it with `ODYSSEY_OS4_DOCKER_IMAGE` on Linux or the `-Image` parameter on Windows. They persist a ccache directory across Docker runs when ccache is installed; use `ODYSSEY_CCACHE=off` (Linux) or `-Ccache off` (Windows) to disable it. See [Speed tuning and benchmarking](BENCHMARKING_AND_TUNING.md) for runtime tuning caveats. You can bypass Docker and run the SDK-backed script directly, from the repository root:
 
 ```bash
 bash OdysseyModern/fetch-and-build-os4.sh
