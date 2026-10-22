@@ -170,6 +170,7 @@ jobs:
           Upstream repository: https://github.com/deadwood2/OdysseyWebBrowser
           Upstream branch: odyssey
           Upstream commit: $(git -C odyssey-upstream-os4 rev-parse HEAD)
+          Build recipe commit: $GITHUB_SHA
           Target: AmigaOS 4 PPC (unverified on an AmigaOS 4.1 Update 3 device)
           CMake configuration: Release
           Build profile: ${BUILD_PROFILE}
@@ -191,6 +192,7 @@ jobs:
           Lower milliseconds are better. Compare only matching hardware and
           browser builds. Synthetic scores are not full-page browsing scores.
           EOF
+          sha256sum Odyssey-OS4-Experimental/OWB | awk '{print $1 "  OWB"}' > Odyssey-OS4-Experimental/BINARY-SHA256.txt
           cat > Odyssey-OS4-Experimental/RUNTIME-DEPENDENCIES.txt <<'EOF'
           EXPERIMENTAL AMIGAOS 4 PPC DEPENDENCIES
 
