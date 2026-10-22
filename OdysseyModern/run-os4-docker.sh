@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
-IMAGE="${ODYSSEY_OS4_DOCKER_IMAGE:-walkero/amigagccondocker:os4-gcc11}"
+IMAGE="${ODYSSEY_OS4_DOCKER_IMAGE:-walkero/amigagccondocker:os4-gcc11-3.5.2}"
 
 command -v docker >/dev/null 2>&1 || {
   printf 'ERROR: Docker is required. Install Docker Desktop/Engine and try again.\n' >&2
