@@ -115,6 +115,8 @@ jobs:
           cp -a odyssey-upstream-os4/Dist/. Odyssey-OS4-Experimental/
           cp cross-build-amigaos4/bin/OWB Odyssey-OS4-Experimental/OWB
           cp odyssey-upstream-os4/README.md Odyssey-OS4-Experimental/UPSTREAM-README.md
+          cp icu-source-os4/icu4c/license.html Odyssey-OS4-Experimental/ICU-LICENSE.html
+          cp cross-build-icu-os4/ICU-BUILD-INFO.txt Odyssey-OS4-Experimental/ICU-BUILD-INFO.txt
           cat > Odyssey-OS4-Experimental/BUILD-STATUS.txt <<'EOF'
           EXPERIMENTAL BUILD - NOT YET VERIFIED ON AMIGAOS 4.1 UPDATE 3
 
