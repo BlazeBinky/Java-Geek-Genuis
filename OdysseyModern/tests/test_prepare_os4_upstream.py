@@ -145,6 +145,9 @@ def main() -> int:
         assert allocator.is_file() and "AllocVecTags" in allocator.read_text(encoding="utf-8")
         allocator_text = allocator.read_text(encoding="utf-8")
         assert "AVT_ClearWithValue, 0" in allocator_text, "reserveUncommitted must preserve the zeroed-memory contract"
+        assert "AVT_Type, MEMF_SHARED" in allocator_text, "WebKit pages must be shared across worker/GC tasks"
+        assert "AVT_Lock, FALSE" in allocator_text, "the browser heap should not pin all allocated pages in RAM"
+        assert "AVT_Type, MEMF_PRIVATE" not in allocator_text, "task-private memory is unsafe for shared WebKit heap users"
         assert "return reserveUncommitted(bytes, usage, writable, executable, includesGuardPages);" in allocator_text
         commit_body = allocator_text.split("void OSAllocator::commit", 1)[1].split("void OSAllocator::decommit", 1)[0]
         assert "memset(" not in commit_body, "commit should not clear memory that reservation/decommit already zeroed"
