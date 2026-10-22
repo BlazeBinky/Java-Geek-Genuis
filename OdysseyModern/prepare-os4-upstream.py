@@ -269,7 +269,7 @@ def main() -> int:
         "        -ljpeg -lpng -lssl -lcrypto\n"
         "        ${ICU_I18N_LIBRARIES} ${ICU_LIBRARIES} ${ICU_DATA_LIBRARIES}\n"
         "        -lsqlite3 -ldebug -lopenurl -lrexxsyslib -liconv -lpsl -latomic\n"
-        "        ${ZLIB_LIBRARIES}\n"
+        "        ${ZLIB_LIBRARIES} -lpthread\n"
         "    )\n"
         "    if (ENABLE_XSLT)\n"
         "        list(APPEND OdysseyWebBrowser_LIBRARIES -lxslt)\n"
