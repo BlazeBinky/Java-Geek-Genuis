@@ -146,6 +146,8 @@ jobs:
           cp odyssey-upstream-os4/README.md Odyssey-OS4-Experimental/UPSTREAM-README.md
           cp icu-source-os4/icu4c/license.html Odyssey-OS4-Experimental/ICU-LICENSE.html
           cp cross-build-icu-os4/ICU-BUILD-INFO.txt Odyssey-OS4-Experimental/ICU-BUILD-INFO.txt
+          BUILD_PROFILE="${{ github.event_name == 'workflow_dispatch' && inputs.profile || (contains(github.event.head_commit.message, '[fast]') && 'fast' || 'balanced') }}"
+          if [[ "$BUILD_PROFILE" == "fast" ]]; then OPT_LEVEL=3; else OPT_LEVEL=2; fi
           mkdir -p Odyssey-OS4-Experimental/TESTS
           cp OdysseyModern/tests/modern-web-check.html Odyssey-OS4-Experimental/TESTS/Modern-Web-Checks.html
           cp OdysseyModern/benchmarks/browser-benchmark.html Odyssey-OS4-Experimental/TESTS/Performance-Benchmark.html
@@ -166,7 +168,8 @@ jobs:
           Upstream commit: $(git -C odyssey-upstream-os4 rev-parse HEAD)
           Target: AmigaOS 4 PPC (unverified on an AmigaOS 4.1 Update 3 device)
           CMake configuration: Release
-          C++ optimization: -O2 (balanced profile)
+          Build profile: ${BUILD_PROFILE}
+          C++ optimization: -O${OPT_LEVEL}
           JavaScript engine: C-loop interpreter; no PPC JIT/FTL JIT
           Disabled in this baseline: WebAssembly, Web Audio, WebCrypto, WebGL, Service Workers
           Validation required: runtime startup, HTTPS/TLS, real sites, media, tabs, and benchmark pages
@@ -183,6 +186,26 @@ jobs:
           machine, and save the JSON result on a host computer for comparison.
           Lower milliseconds are better. Compare only matching hardware and
           browser builds. Synthetic scores are not full-page browsing scores.
+          EOF
+          cat > Odyssey-OS4-Experimental/RUNTIME-DEPENDENCIES.txt <<'EOF'
+          EXPERIMENTAL AMIGAOS 4 PPC DEPENDENCIES
+
+          This package is an experimental cross-build. The exact runtime
+          dependencies depend on the target SDK and libraries selected by the
+          linker. Keep the matching AmigaOS 4 SDK/runtime libraries installed
+          and check the build log/link command before copying this executable
+          to another setup.
+
+          The current port links against the MUI/Intuition/Exec libraries plus
+          target builds of Cairo, Pixman, Fontconfig, FreeType, LibXML2, libcurl,
+          OpenSSL, JPEG/PNG, SQLite, zlib, libpsl, iconv, and related OS support.
+          ICU is statically built into the executable where the link succeeds.
+          XSLT and media dependencies are optional and disabled in the baseline.
+
+          Do not download unrelated Linux/AROS shared libraries and copy them
+          into AmigaOS. Do not bypass HTTPS certificate errors. This ZIP does
+          not certify TLS/security or guarantee that all dependencies are
+          already installed on a given AmigaOS 4.1 Update 3 system.
           EOF
           python3 - <<'PY'
           from pathlib import Path
