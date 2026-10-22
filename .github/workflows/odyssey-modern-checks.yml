@@ -43,12 +43,14 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+      - name: Check out upstream Odyssey security-sensitive networking sources
+        run: git clone --depth 1 --branch odyssey https://github.com/deadwood2/OdysseyWebBrowser.git odyssey-security-check
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.x"
       - name: Check Python syntax
-        run: python -m py_compile OdysseyModern/prepare-upstream.py OdysseyModern/prepare-os4-upstream.py OdysseyModern/tests/test_prepare_upstream.py OdysseyModern/tests/test_prepare_os4_upstream.py OdysseyModern/tests/test_compare_reports.py OdysseyModern/tests/test_icu_platform_fragment.py OdysseyModern/tests/test_os4_thread_preflight.py OdysseyModern/benchmarks/compare-reports.py OdysseyModern/tests/check_html_scripts.py
+        run: python -m py_compile OdysseyModern/prepare-upstream.py OdysseyModern/prepare-os4-upstream.py OdysseyModern/tests/test_prepare_upstream.py OdysseyModern/tests/test_prepare_os4_upstream.py OdysseyModern/tests/test_compare_reports.py OdysseyModern/tests/test_icu_platform_fragment.py OdysseyModern/tests/test_os4_thread_preflight.py OdysseyModern/tests/test_upstream_security.py OdysseyModern/benchmarks/compare-reports.py OdysseyModern/tests/check_html_scripts.py
       - name: Test downstream patch application
         run: python OdysseyModern/tests/test_prepare_upstream.py
       - name: Test AmigaOS 4 source-port patcher
@@ -59,6 +61,8 @@ jobs:
         run: python OdysseyModern/tests/test_icu_platform_fragment.py
       - name: Test early native-thread linker preflight
         run: python OdysseyModern/tests/test_os4_thread_preflight.py
+      - name: Check HTTPS verification defaults in upstream source
+        run: python OdysseyModern/tests/test_upstream_security.py odyssey-security-check
       - name: Check browser test JavaScript syntax
         run: python OdysseyModern/tests/check_html_scripts.py
       - name: Check shell syntax
