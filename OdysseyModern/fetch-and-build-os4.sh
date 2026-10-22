@@ -74,7 +74,7 @@ if [[ -d "$SOURCE_DIR/.git" ]]; then
   done < <(git -C "$SOURCE_DIR" status --porcelain)
 
   git -C "$SOURCE_DIR" fetch --depth=1 origin "$BRANCH"
-  git -C "$SOURCE_DIR" checkout -B "$BRANCH" "origin/$BRANCH"
+  git -C "$SOURCE_DIR" checkout --detach -f "origin/$BRANCH"
   git -C "$SOURCE_DIR" reset --hard "origin/$BRANCH"
   rm -f "$SOURCE_DIR/Source/WTF/wtf/OSAllocatorAmigaOS4.cpp" "$SOURCE_DIR/Source/WTF/wtf/strcasecmpAmigaOS4.cpp"
 else
