@@ -41,7 +41,9 @@ Do not enable JIT by editing a boolean unless the engine has a correct PPC machi
 1. Build `balanced`, open `benchmarks/browser-benchmark.html` in the target browser, let one warm-up run complete, then run the five-round benchmark.
 2. Save the entire report, including user-agent, screen size and date.
 3. Repeat with `fast` using the same machine, power settings, browser cache state, test-page revision and background workload.
-4. Compare the median for every category, not one result. If a difference is not repeatable, keep the smaller/more stable build.
-5. Separately test several real HTTPS sites. Synthetic JavaScript timings do not measure certificate negotiation, layout complexity, networking, memory pressure or overall compatibility.
+4. Select and copy the machine-readable JSON from the benchmark page into files such as `balanced.json` and `fast.json`.
+5. Compare them with `python OdysseyModern/benchmarks/compare-reports.py balanced.json fast.json`. The tool reports percentage faster/slower and treats sub-0.5% changes as noise.
+6. Compare the median for every category, not one result. If a difference is not repeatable, keep the smaller/more stable build.
+7. Separately test several real HTTPS sites. Synthetic JavaScript timings do not measure certificate negotiation, layout complexity, networking, memory pressure or overall compatibility.
 
 No speedup is claimed until results are recorded on the actual target.
