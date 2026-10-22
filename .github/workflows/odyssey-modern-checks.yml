@@ -146,6 +146,10 @@ jobs:
           cp odyssey-upstream-os4/README.md Odyssey-OS4-Experimental/UPSTREAM-README.md
           cp icu-source-os4/icu4c/license.html Odyssey-OS4-Experimental/ICU-LICENSE.html
           cp cross-build-icu-os4/ICU-BUILD-INFO.txt Odyssey-OS4-Experimental/ICU-BUILD-INFO.txt
+          mkdir -p Odyssey-OS4-Experimental/TESTS
+          cp OdysseyModern/tests/modern-web-check.html Odyssey-OS4-Experimental/TESTS/Modern-Web-Checks.html
+          cp OdysseyModern/benchmarks/browser-benchmark.html Odyssey-OS4-Experimental/TESTS/Performance-Benchmark.html
+          cp OdysseyModern/benchmarks/compare-reports.py Odyssey-OS4-Experimental/TESTS/compare-reports.py
           cat > Odyssey-OS4-Experimental/BUILD-STATUS.txt <<'EOF'
           EXPERIMENTAL BUILD - NOT YET VERIFIED ON AMIGAOS 4.1 UPDATE 3
 
@@ -155,6 +159,30 @@ jobs:
           features and uses the JavaScript interpreter (no PPC JIT backend).
           Test on a backed-up test installation first and keep OS libraries/SDK
           dependencies matched to the build environment.
+          EOF
+          cat > Odyssey-OS4-Experimental/BUILD-METADATA.txt <<EOF
+          Upstream repository: https://github.com/deadwood2/OdysseyWebBrowser
+          Upstream branch: odyssey
+          Upstream commit: $(git -C odyssey-upstream-os4 rev-parse HEAD)
+          Target: AmigaOS 4 PPC (unverified on an AmigaOS 4.1 Update 3 device)
+          CMake configuration: Release
+          C++ optimization: -O2 (balanced profile)
+          JavaScript engine: C-loop interpreter; no PPC JIT/FTL JIT
+          Disabled in this baseline: WebAssembly, Web Audio, WebCrypto, WebGL, Service Workers
+          Validation required: runtime startup, HTTPS/TLS, real sites, media, tabs, and benchmark pages
+          EOF
+          cat > Odyssey-OS4-Experimental/TESTS/README.txt <<'EOF'
+          MODERN-WEB CHECKS
+          Open Modern-Web-Checks.html in Odyssey to identify missing APIs and run
+          small JavaScript/storage/layout smoke tests. Open it over HTTP(S) when
+          possible to exercise same-origin Fetch. A PASS is not a standards or
+          security certification.
+
+          PERFORMANCE BENCHMARK
+          Run Performance-Benchmark.html five times after warm-up on the same
+          machine, and save the JSON result on a host computer for comparison.
+          Lower milliseconds are better. Compare only matching hardware and
+          browser builds. Synthetic scores are not full-page browsing scores.
           EOF
           python3 - <<'PY'
           from pathlib import Path
