@@ -155,7 +155,8 @@ def main() -> int:
     platform = root / "Source" / "WTF" / "wtf" / "Platform.h"
     mui_platform = root / "Source" / "WTF" / "wtf" / "PlatformMUI.cmake"
     bal_base = root / "Source" / "WebCore" / "platform" / "mui" / "BALBase.h"
-    if not all(p.is_file() for p in (root / "CMakeLists.txt", platform, mui_platform, bal_base)):
+    app_cmake = root / "Tools" / "OdysseyWebBrowser" / "CMakeLists.txt"
+    if not all(p.is_file() for p in (root / "CMakeLists.txt", platform, mui_platform, bal_base, app_cmake)):
         print("ERROR: source path is not the expected Odyssey checkout (required source files missing).", file=sys.stderr)
         return 2
 
@@ -215,6 +216,77 @@ def main() -> int:
         "list(APPEND WTF_SOURCES\n"
         "    posix/ThreadingPOSIX.cpp",
         "select an OS4 memory allocator and compatibility function",
+    )
+
+    app_old = (
+        "set(OdysseyWebBrowser_LIBRARIES\n"
+        "    JavaScriptCore\n"
+        "    WebKitLegacy\n"
+        "    -Wl,--start-group WebCore -Wl,--end-group\n"
+        "    -lz\n"
+        "    -lcairo\n"
+        "    -lpixman\n"
+        "    -lfontconfig\n"
+        "    -lfreetype2\n"
+        "    -lxml2\n"
+        "    -lz\n"
+        "    -lcurl\n"
+        "    -ljpeg\n"
+        "    -lpng\n"
+        "    -lssl\n"
+        "    -lcrypto\n"
+        "    -licui18n\n"
+        "    -licuuc\n"
+        "    -licudata\n"
+        "    -lsqlite3\n"
+        "    -lxslt\n"
+        "    -ldebug\n"
+        "    -lopenurl\n"
+        "    -lrexxsyslib\n"
+        "    -lavformat\n"
+        "    -lbz2\n"
+        "    -lavcodec\n"
+        "    -liconv\n"
+        "    -lz\n"
+        "    -lavutil\n"
+        "    -lswresample\n"
+        "    -lswscale\n"
+        "    -lpsl\n"
+        "    -latomic\n"
+        "    \${ZLIB_LIBRARIES}\n"
+        ")\n"
+    )
+    app_new = (
+        "# AmigaOS 4 does not ship the AROS FFmpeg/Acinerella stack by default.\n"
+        "# Keep optional libraries out of the default PPC link, then add them only\n"
+        "# when the matching WebCore feature is explicitly enabled.\n"
+        "if (ODYSSEY_TARGET_AMIGAOS4)\n"
+        "    set(OdysseyWebBrowser_LIBRARIES\n"
+        "        JavaScriptCore\n"
+        "        WebKitLegacy\n"
+        "        -Wl,--start-group WebCore -Wl,--end-group\n"
+        "        -lz -lcairo -lpixman -lfontconfig -lfreetype2 -lxml2 -lcurl\n"
+        "        -ljpeg -lpng -lssl -lcrypto -licui18n -licuuc -licudata\n"
+        "        -lsqlite3 -ldebug -lopenurl -lrexxsyslib -liconv -lpsl -latomic\n"
+        "        \${ZLIB_LIBRARIES}\n"
+        "    )\n"
+        "    if (ENABLE_XSLT)\n"
+        "        list(APPEND OdysseyWebBrowser_LIBRARIES -lxslt)\n"
+        "    endif ()\n"
+        "    if (ENABLE_VIDEO OR ENABLE_MEDIA_SOURCE)\n"
+        "        list(APPEND OdysseyWebBrowser_LIBRARIES\n"
+        "            -lbz2 -lavformat -lavcodec -lavutil -lswresample -lswscale\n"
+        "        )\n"
+        "    endif ()\n"
+        "else ()\n"
+        + app_old +
+        "endif ()\n"
+    )
+    replace_once(
+        app_cmake,
+        app_old,
+        app_new,
+        "gate optional XSLT and FFmpeg link dependencies for AmigaOS 4",
     )
 
     write_new_source(
