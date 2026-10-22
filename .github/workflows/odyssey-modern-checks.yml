@@ -70,3 +70,80 @@ jobs:
             cross-build-amigaos4/odyssey-configure.log
             cross-build-amigaos4/CMakeCache.txt
           if-no-files-found: warn
+
+
+  os4-build:
+    # Full PPC compilation is deliberately explicit because WebKit is large and
+    # the standard runner has finite memory/time. Push a commit with [os4-build].
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[os4-build]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Restore compiler cache
+        uses: actions/cache@v4
+        with:
+          path: .odyssey-ccache
+          key: \${{ runner.os }}-odyssey-os4-ccache-gcc11-v1
+          restore-keys: |
+            \${{ runner.os }}-odyssey-os4-ccache-
+      - name: Build AmigaOS 4 PPC Odyssey
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p .odyssey-ccache
+          docker pull walkero/amigagccondocker:os4-gcc11-3.5.2
+          docker run --rm --init \
+            --volume "$PWD:/opt/code" \
+            --volume "$PWD/.odyssey-ccache:/opt/odyssey-ccache" \
+            --workdir /opt/code \
+            --env BUILD_JOBS=1 \
+            --env CCACHE_DIR=/opt/odyssey-ccache \
+            --env ODYSSEY_CCACHE=auto \
+            --env ODYSSEY_BUILD_PROFILE=balanced \
+            walkero/amigagccondocker:os4-gcc11-3.5.2 \
+            bash OdysseyModern/fetch-and-build-os4.sh
+      - name: Package experimental application if the link succeeds
+        if: success()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -x cross-build-amigaos4/bin/OWB
+          mkdir -p Odyssey-OS4-Experimental
+          cp -a odyssey-upstream-os4/Dist/. Odyssey-OS4-Experimental/
+          cp cross-build-amigaos4/bin/OWB Odyssey-OS4-Experimental/OWB
+          cp odyssey-upstream-os4/README.md Odyssey-OS4-Experimental/UPSTREAM-README.md
+          cat > Odyssey-OS4-Experimental/BUILD-STATUS.txt <<'EOF'
+          EXPERIMENTAL BUILD - NOT YET VERIFIED ON AMIGAOS 4.1 UPDATE 3
+
+          This package was cross-compiled for AmigaOS 4 PPC from the Odyssey
+          WebKit codebase. It is not certified secure or compatible with all
+          current websites. The initial build disables several unsupported
+          features and uses the JavaScript interpreter (no PPC JIT backend).
+          Test on a backed-up test installation first and keep OS libraries/SDK
+          dependencies matched to the build environment.
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZIP_DEFLATED, ZipFile
+          root = Path("Odyssey-OS4-Experimental")
+          with ZipFile("odyssey-os4-ppc-experimental.zip", "w", ZIP_DEFLATED, compresslevel=6) as archive:
+              for path in sorted(root.rglob("*")):
+                  if path.is_file():
+                      archive.write(path, path.as_posix())
+          PY
+      - name: Upload executable, package and compiler logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: odyssey-os4-ppc-experimental
+          path: |
+            odyssey-os4-ppc-experimental.zip
+            cross-build-amigaos4/odyssey-configure.log
+            cross-build-amigaos4/odyssey-build.log
+            cross-build-amigaos4/CMakeCache.txt
+            cross-build-amigaos4/bin/**
+            cross-build-amigaos4/lib/**
+          if-no-files-found: warn
+          compression-level: 1
