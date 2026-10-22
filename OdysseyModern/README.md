@@ -13,7 +13,19 @@ This directory is a downstream modernization and build layer for [deadwood2/Odys
 
 This requires a Linux/WSL or Docker environment with `ppc-amigaos-gcc`, `ppc-amigaos-g++`, and AmigaOS 4 target libraries/headers installed. The default include paths mirror the historical build setup; override them with `AMIGAOS4_SDK_ROOT`, `AMIGAOS4_MUI_INCLUDE_DIR`, `AMIGAOS4_CAIRO_INCLUDE_DIR`, `AMIGAOS4_FREETYPE_INCLUDE_DIR`, `AMIGAOS4_LIBXML2_INCLUDE_DIR`, and `AMIGAOS4_LIBXSLT_INCLUDE_DIR`.
 
-Run from the repository root:
+On Windows with Docker Desktop (Linux containers) installed, you can start the same cross-build directly from PowerShell:
+
+```powershell
+.\OdysseyModern\run-os4-docker.ps1
+```
+
+On Linux/WSL with Docker, use:
+
+```bash
+./OdysseyModern/run-os4-docker.sh
+```
+
+These wrappers use the AmigaGCConDocker GCC 11 image by default; override it with `ODYSSEY_OS4_DOCKER_IMAGE` on Linux or the `-Image` parameter on Windows. You can bypass Docker and run the SDK-backed script directly, from the repository root:
 
 ```bash
 ./OdysseyModern/fetch-and-build-os4.sh
