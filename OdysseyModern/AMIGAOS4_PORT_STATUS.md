@@ -11,6 +11,8 @@ That branch is valuable as a porting reference, but it is based on a much older 
 - An experimental PPC toolchain file modelled on the historical setup.
 - A separate `fetch-and-build-os4.sh` script that uses the newer `odyssey` source branch.
 - Configurable SDK include paths, Release optimization (`-O2` default, experimental `-O3`), conservative build parallelism and separate logs.
+- Optional persistent `ccache` support in both OS4 Docker wrappers. This reduces repeat compile time when the same C/C++ translation units are rebuilt; it does **not** speed up page rendering.
+- A benchmark page that resets canvas state each round and reports medians for JavaScript, array, DOM/layout and canvas operations. Compare `balanced` and `fast` builds using the same target and see [benchmarking and tuning](BENCHMARKING_AND_TUNING.md).
 - An optional media-off baseline build because the historical OS4 port disabled video due to FFmpeg/Acinerella dependency problems. `ODYSSEY_OS4_MEDIA=on` can test the full video path when compatible target libraries are installed.
 
 ## Known blockers; not yet solved
