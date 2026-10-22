@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
 $repo = "https://github.com/deadwood2/OdysseyWebBrowser/archive/refs/heads/odyssey.zip"
-$root = Join-Path (Get-Location) "odyssey-upstream"
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$root = Join-Path $repoRoot "odyssey-upstream"
 $zip = Join-Path $env:TEMP "OdysseyWebBrowser-odyssey.zip"
 $extract = Join-Path $env:TEMP "OdysseyWebBrowser-odyssey-extract"
 
