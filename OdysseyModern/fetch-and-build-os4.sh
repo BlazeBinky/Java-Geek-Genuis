@@ -5,7 +5,15 @@ REPO_URL="https://github.com/deadwood2/OdysseyWebBrowser.git"
 BRANCH="odyssey"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="${ODYSSEY_SOURCE_DIR:-$PWD/odyssey-upstream-os4}"
-SDK_ROOT="${AMIGAOS4_SDK_ROOT:-/usr/ppc-amigaos/SDK}"
+if [[ -n "${AMIGAOS4_SDK_ROOT:-}" ]]; then
+  SDK_ROOT="$AMIGAOS4_SDK_ROOT"
+elif [[ -d /opt/ppc-amigaos/ppc-amigaos/SDK ]]; then
+  # Default layout used by walkero/amigagccondocker OS4 images.
+  SDK_ROOT="/opt/ppc-amigaos/ppc-amigaos/SDK"
+else
+  # Legacy adtools/Docker setups may use this path.
+  SDK_ROOT="/usr/ppc-amigaos/SDK"
+fi
 PROFILE="${ODYSSEY_BUILD_PROFILE:-balanced}"
 MEDIA="${ODYSSEY_OS4_MEDIA:-off}"
 
@@ -25,11 +33,26 @@ case "$MEDIA" in
   *) fail "ODYSSEY_OS4_MEDIA must be 'on' or 'off'." ;;
 esac
 
-MUI_INCLUDE_DIR="${AMIGAOS4_MUI_INCLUDE_DIR:-$SDK_ROOT/MUI/C/include}"
-CAIRO_INCLUDE_DIR="${AMIGAOS4_CAIRO_INCLUDE_DIR:-$SDK_ROOT/local/newlib/include/cairo}"
+# Support both the historical SDK layout and current AmigaGCConDocker layout.
+if [[ -n "${AMIGAOS4_MUI_INCLUDE_DIR:-}" ]]; then
+  MUI_INCLUDE_DIR="$AMIGAOS4_MUI_INCLUDE_DIR"
+elif [[ -d "$SDK_ROOT/MUI/C/include" ]]; then
+  MUI_INCLUDE_DIR="$SDK_ROOT/MUI/C/include"
+else
+  MUI_INCLUDE_DIR="$SDK_ROOT/local/common/include"
+fi
+if [[ -n "${AMIGAOS4_CAIRO_INCLUDE_DIR:-}" ]]; then
+  CAIRO_INCLUDE_DIR="$AMIGAOS4_CAIRO_INCLUDE_DIR"
+elif [[ -d "$SDK_ROOT/local/newlib/include/cairo" ]]; then
+  CAIRO_INCLUDE_DIR="$SDK_ROOT/local/newlib/include/cairo"
+else
+  CAIRO_INCLUDE_DIR="$SDK_ROOT/local/common/include/cairo"
+fi
 FREETYPE_INCLUDE_DIR="${AMIGAOS4_FREETYPE_INCLUDE_DIR:-$SDK_ROOT/local/common/include/freetype2}"
 LIBXML2_INCLUDE_DIR="${AMIGAOS4_LIBXML2_INCLUDE_DIR:-$SDK_ROOT/local/common/include/libxml2}"
 LIBXSLT_INCLUDE_DIR="${AMIGAOS4_LIBXSLT_INCLUDE_DIR:-$SDK_ROOT/local/common/include/libxslt}"
+export AMIGAOS4_SDK_ROOT="$SDK_ROOT"
+export AMIGAOS4_MUI_INCLUDE_DIR="$MUI_INCLUDE_DIR"
 
 for dir in "$MUI_INCLUDE_DIR" "$CAIRO_INCLUDE_DIR" "$FREETYPE_INCLUDE_DIR" "$LIBXML2_INCLUDE_DIR" "$LIBXSLT_INCLUDE_DIR"; do
   [[ -d "$dir" ]] || fail "Required target include directory not found: $dir. Set the matching AMIGAOS4_*_INCLUDE_DIR variable."
