@@ -19,7 +19,7 @@ class ICUPlatformFragmentTests(unittest.TestCase):
         )
 
         staging = source.index('install -m 0644 "$ICU_SOURCE_DIR/icu4c/source/config/mh-unknown" "$ICU_PKGDATA_DIR/config/mh-unknown"')
-        target_build = source.index('make -j"${ODYSSEY_ICU_TARGET_JOBS:-1}"')
+        target_build = source.index('make PKGDATA_OPTS="-O ../data/icupkg.inc -w"')
         self.assertLess(staging, target_build, "the fragment must exist before target make starts")
 
     def test_host_fragment_still_comes_from_native_host_build(self) -> None:
@@ -75,7 +75,8 @@ class ICUPlatformFragmentTests(unittest.TestCase):
         patch_at = source.index('old = "-i $(BUILDDIR)"')
         target_configure_at = source.index("Configuring target ICU for AmigaOS 4 PPC")
         self.assertLess(patch_at, target_configure_at, "Makefile.in must be patched before target configure")
-        self.assertIn('ICU_HOST_DATA_DIR="$HOST_BUILD/data/out/build/icudt55l" make -j', source)
+        self.assertIn('ICU_HOST_DATA_DIR="$HOST_BUILD/data/out/build/icudt55l" \\', source)
+        self.assertIn('make PKGDATA_OPTS="-O ../data/icupkg.inc -w"', source)
 
 
 if __name__ == "__main__":
