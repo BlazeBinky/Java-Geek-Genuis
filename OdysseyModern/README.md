@@ -7,7 +7,7 @@ This directory is a downstream modernization and build layer for [deadwood2/Odys
 - Engine source: the upstream `odyssey` branch.
 - The upstream documented active build path is **x86_64 AROS** using the AROS cross-compiler/SDK.
 - For your intended **AmigaOS 4.1 Update 3 / PPC** target, I've added a separate experimental toolchain and build attempt. The latest source branch is not yet proven to compile on OS4; the 2019 [historical OS4 compile branch](https://github.com/deadwood2/OdysseyWebBrowser/tree/jaokim_os4_compile) is used as a porting reference, not substituted for the newer engine. Read [AmigaOS 4 port status](AMIGAOS4_PORT_STATUS.md).
-- The current MUI configuration enables JIT and FTL JIT only for x86_64. On PPC it uses the C-loop JavaScript interpreter, so compiler `-O3` will not magically add a JavaScript JIT. Features such as WebAssembly, WebCrypto, Web Audio, Service Workers and WebGL are disabled or unavailable in the upstream MUI configuration; do not force them on without fixing and testing their implementations.
+- The current MUI configuration enables JIT and FTL JIT only for x86_64. On PPC it uses the C-loop JavaScript interpreter, so compiler `-O3` will not magically add a JavaScript JIT. The source patcher recognizes AmigaOS 4 compiler macros, corrects the missing-header reference in `BALBase.h`, and selects an OS4-specific allocator with explicit limitations. Features such as WebAssembly, WebCrypto, Web Audio, Service Workers and WebGL are disabled or unavailable in the upstream MUI configuration; do not force them on without fixing and testing their implementations.
 
 ## Preferred target: AmigaOS 4 PPC experiment
 
@@ -31,7 +31,7 @@ These wrappers use the pinned `walkero/amigagccondocker:os4-gcc11-3.5.2` image b
 bash OdysseyModern/fetch-and-build-os4.sh
 ```
 
-The first goal is to collect real compiler errors and port the missing OS4 shims forward. Default `ODYSSEY_BUILD_PROFILE=balanced` uses `-O2`. For an experimental `-O3` build:
+The first goal is to collect real configure/build errors and port the missing OS4 shims forward. The script automatically runs `prepare-os4-upstream.py` on a fresh or reset upstream `odyssey` checkout; it fails closed if expected source patterns have changed and preserves unrelated local edits. Its OS4 allocator currently uses page-aligned `AllocVecTags` memory and clears decommitted ranges instead of releasing physical pages, so it may retain more memory than a true virtual-memory backend. Guard pages are not implemented. Default `ODYSSEY_BUILD_PROFILE=balanced` uses `-O2`. For an experimental `-O3` build:
 
 ```bash
 ODYSSEY_BUILD_PROFILE=fast bash OdysseyModern/fetch-and-build-os4.sh
@@ -56,7 +56,7 @@ Serve the repository root with a local HTTP server, then open these pages in the
 - [Capability smoke test](tests/modern-web-check.html) reports basic API and CSS capability signals. An exposed API is not proof of standards conformance.
 - [Performance benchmark](benchmarks/browser-benchmark.html) measures JavaScript loop, array, DOM/layout, and canvas timings over five rounds; compare medians on the same hardware.
 
-Pushes to this branch run GitHub Actions checks for Python syntax, patcher idempotence, shell syntax and whitespace. Those checks do not compile WebKit or certify browser compatibility. The native OS4 build, runtime startup, real HTTPS websites, compatibility and performance still require target testing.
+Pushes to this branch run GitHub Actions checks for Python syntax, both patchers' idempotence, JavaScript syntax, shell syntax and whitespace. A real AmigaOS 4 SDK configuration job can be launched manually from Actions, or triggered by a push commit message containing `[os4-configure]`; it downloads the pinned compiler image and uploads CMake logs. This configuration check is not a full compile. Those checks do not compile WebKit or certify browser compatibility. The native OS4 build, runtime startup, real HTTPS websites, compatibility and performance still require target testing.
 
 ## Scope and licensing
 
