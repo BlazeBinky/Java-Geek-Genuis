@@ -52,6 +52,21 @@ def main() -> int:
     )
     replace_once(rebuild, rebuild_old, rebuild_new, "portable SDK path in rebuild.sh")
 
+    cmake_old = (
+        "    cmake \\\n"
+        "        -DCMAKE_TOOLCHAIN_FILE=../Source/cmake/AROS.cmake \\\n"
+    )
+    cmake_new = (
+        "    CMAKE_LAUNCHER_ARGS=()\\n"
+        '    if [[ -n "${ODYSSEY_COMPILER_LAUNCHER:-}" ]]; then\\n'
+        '        CMAKE_LAUNCHER_ARGS+=("-DCMAKE_C_COMPILER_LAUNCHER=${ODYSSEY_COMPILER_LAUNCHER}")\\n'
+        '        CMAKE_LAUNCHER_ARGS+=("-DCMAKE_CXX_COMPILER_LAUNCHER=${ODYSSEY_COMPILER_LAUNCHER}")\\n'
+        "    fi\\n"
+        '    cmake "${CMAKE_LAUNCHER_ARGS[@]}" \\\n'
+        "        -DCMAKE_TOOLCHAIN_FILE=../Source/cmake/AROS.cmake \\\n"
+    )
+    replace_once(rebuild, cmake_old, cmake_new, "optional compiler launcher support in rebuild.sh")
+
     old_flags = (
         'SET(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "Flags used by the C compiler during RELEASE builds.")\n'
         'SET(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "Flags used by the CXX compiler during RELEASE builds.")'
