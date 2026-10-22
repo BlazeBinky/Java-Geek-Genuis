@@ -46,3 +46,12 @@ ODYSSEY_OS4_MEDIA=on ./OdysseyModern/fetch-and-build-os4.sh
 ```
 
 The first configure passed, but the first compile stopped before linking on missing ICU headers. The branch now has an ICU cross-build step and a full-build CI job; until that job produces an executable and it is run on AmigaOS 4.1 Update 3, no native OS4 binary is considered finished or verified.
+
+## Latest build repair notes (October 22, 2026)
+
+The previous full build stopped inside ICU before reaching WebKit. The first error showed that ICU's generated Makefiles looked for the target platform fragment under the configured install prefix, rather than only under ICU's source `config/` directory. The build now stages `mh-unknown` at `$PREFIX/share/icu/55.1/config/mh-unknown` before running target `make`, and a regression check verifies that ordering.
+
+The next ICU issue found in the PPC port is that ICU 55.1's generic timezone code can reference a `tzname` array even when the OS4 libc configuration reports that it is unavailable. The bootstrap now patches this guarded fallback in its disposable ICU source checkout and is safe to rerun after a failed build. The static workflow tests pass with the fragment-staging check; a clean full build with both repairs is the next acceptance gate.
+
+Performance remains deliberately conservative until an actual PPC binary can be benchmarked: the default profile is `-O2`, the experimental `fast` profile is `-O3`, and ccache only shortens rebuilds. The current JavaScript engine has no PPC JIT backend, so interpreter performance is still a known major limitation. Do not call it fast or fully modern without target-device measurements and a proper PPC JIT implementation.
+
