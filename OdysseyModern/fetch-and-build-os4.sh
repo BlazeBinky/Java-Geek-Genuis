@@ -112,7 +112,7 @@ if [[ -d "$SOURCE_DIR/.git" ]]; then
     [[ -z "$status_line" ]] && continue
     changed_path="${status_line:3}"
     case "$changed_path" in
-      Source/WTF/wtf/Platform.h|Source/WebCore/platform/mui/BALBase.h|Source/WTF/wtf/PlatformMUI.cmake|Source/WTF/wtf/OSAllocatorAmigaOS4.cpp|Source/WTF/wtf/strcasecmpAmigaOS4.cpp) ;;
+      Source/WTF/wtf/Platform.h|Source/WebCore/platform/mui/BALBase.h|Source/WTF/wtf/PlatformMUI.cmake|Source/WTF/wtf/OSAllocatorAmigaOS4.cpp|Source/WTF/wtf/strcasecmpAmigaOS4.cpp|Tools/OdysseyWebBrowser/CMakeLists.txt) ;;
       *) fail "Refusing to reset unrecognized local source change '$changed_path'. Back it up or choose a fresh ODYSSEY_SOURCE_DIR." ;;
     esac
   done < <(git -C "$SOURCE_DIR" status --porcelain)
