@@ -143,6 +143,10 @@ def main() -> int:
         assert "if (ENABLE_VIDEO OR ENABLE_MEDIA_SOURCE)" in os4_link_block
         assert "-lavformat" in app_cmake.split("else ()", 1)[1], "non-OS4 link dependencies were lost"
         assert allocator.is_file() and "AllocVecTags" in allocator.read_text(encoding="utf-8")
+        allocator_text = allocator.read_text(encoding="utf-8")
+        assert "AVT_ClearWithValue" not in allocator_text, "uncommitted reservations should not be eagerly zero-filled"
+        assert "void* allocation = reserveUncommitted" in allocator_text
+        assert "memset(allocation, 0, bytes)" in allocator_text, "reserveAndCommit must return zeroed memory"
         assert strcmp.is_file() and 'extern "C" int strcasecmp' in strcmp.read_text(encoding="utf-8")
 
         tracked = [
