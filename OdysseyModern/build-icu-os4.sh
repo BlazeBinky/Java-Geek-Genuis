@@ -39,8 +39,6 @@ if [[ "$USE_CCACHE" == "1" ]]; then
   mkdir -p "$CCACHE_DIR"
   HOST_CC="ccache gcc"
   HOST_CXX="ccache g++"
-  HOST_AR="ccache ar"
-  HOST_RANLIB="ccache ranlib"
   TARGET_CC="ccache ppc-amigaos-gcc"
   TARGET_CXX="ccache ppc-amigaos-g++"
   printf 'ICU compiler cache enabled (%s)\n' "$CCACHE_DIR"
