@@ -5,7 +5,7 @@ param(
     [string]$Media = "off",
     [ValidateRange(0, 64)]
     [int]$Jobs = 0,
-    [string]$Image = "walkero/amigagccondocker:os4-gcc11"
+    [string]$Image = "walkero/amigagccondocker:os4-gcc11-3.5.2"
 )
 
 $ErrorActionPreference = "Stop"
