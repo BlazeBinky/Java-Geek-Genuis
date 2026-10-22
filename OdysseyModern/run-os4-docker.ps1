@@ -5,6 +5,8 @@ param(
     [string]$Media = "off",
     [ValidateSet("off", "on")]
     [string]$Xslt = "off",
+    [ValidateSet("auto", "on", "off")]
+    [string]$Ccache = "auto",
     [ValidateRange(0, 64)]
     [int]$Jobs = 0,
     [string]$Image = "walkero/amigagccondocker:os4-gcc11-3.5.2"
