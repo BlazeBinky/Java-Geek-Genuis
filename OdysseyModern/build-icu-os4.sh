@@ -34,6 +34,28 @@ HOST_AR=ar
 HOST_RANLIB=ranlib
 TARGET_CC=ppc-amigaos-gcc
 TARGET_CXX=ppc-amigaos-g++
+
+# Keep ICU optimized consistently with WebKit itself. ICU is hot on text,
+# collation and internationalized pages, so leaving it at -O2 in the fast
+# profile silently created a mixed-optimization binary. CPU flags must target
+# the actual PPC machine, never the Linux build host.
+ICU_OPT_LEVEL="${ODYSSEY_OPT_LEVEL:-2}"
+case "$ICU_OPT_LEVEL" in
+  2|3) ;;
+  *) fail "ODYSSEY_OPT_LEVEL must be 2 or 3." ;;
+esac
+ICU_CPU_FLAGS="${AMIGAOS4_CPU_FLAGS:-}"
+ICU_TARGET_CFLAGS="${AMIGAOS4_ICU_CFLAGS:--O${ICU_OPT_LEVEL}}"
+ICU_TARGET_CXXFLAGS="${AMIGAOS4_ICU_CXXFLAGS:--O${ICU_OPT_LEVEL}}"
+case " $ICU_TARGET_CXXFLAGS " in
+  *" -athread=native "*) ;;
+  *) ICU_TARGET_CXXFLAGS+=" -athread=native" ;;
+esac
+if [[ -n "$ICU_CPU_FLAGS" ]]; then
+  ICU_TARGET_CFLAGS+=" $ICU_CPU_FLAGS"
+  ICU_TARGET_CXXFLAGS+=" $ICU_CPU_FLAGS"
+fi
+printf 'ICU target optimization: -O%s; target CPU flags: %s\\n' "$ICU_OPT_LEVEL" "${ICU_CPU_FLAGS:-generic PPC}"
 if [[ "$USE_CCACHE" == "1" ]]; then
   export CCACHE_DIR="${CCACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/odyssey-ccache}"
   mkdir -p "$CCACHE_DIR"
@@ -170,8 +192,8 @@ BUILD_TRIPLET="$(sh "$ICU_SOURCE_DIR/icu4c/source/config.guess")"
   CXX="$TARGET_CXX" \
   AR=ppc-amigaos-ar \
   RANLIB=ppc-amigaos-ranlib \
-  CFLAGS="${AMIGAOS4_ICU_CFLAGS:--O2}" \
-  CXXFLAGS="${AMIGAOS4_ICU_CXXFLAGS:--O2} -athread=native" \
+  CFLAGS="$ICU_TARGET_CFLAGS" \
+  CXXFLAGS="$ICU_TARGET_CXXFLAGS" \
   LIBS="${AMIGAOS4_ICU_LIBS:--lpthread}" \
   "$ICU_CONFIGURE" \
     --build="$BUILD_TRIPLET" \
