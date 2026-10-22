@@ -33,10 +33,24 @@ class ICUPlatformFragmentTests(unittest.TestCase):
         toolchain = (ROOT / "toolchains" / "AMIGAOS4.cmake").read_text(encoding="utf-8")
         patcher = (ROOT / "prepare-os4-upstream.py").read_text(encoding="utf-8")
 
-        self.assertIn('CXXFLAGS="${AMIGAOS4_ICU_CXXFLAGS:--O2} -athread=native"', source)
+        self.assertIn('CXXFLAGS="$ICU_TARGET_CXXFLAGS"', source)
+        self.assertIn('ICU_TARGET_CXXFLAGS+=" -athread=native"', source)
         self.assertIn('LIBS="${AMIGAOS4_ICU_LIBS:--lpthread}"', source)
         self.assertIn('-athread=native', toolchain)
         self.assertIn('${ZLIB_LIBRARIES} -lpthread', patcher)
+
+    def test_icu_optimization_and_cpu_flags_match_the_selected_profile(self) -> None:
+        source = SCRIPT.read_text(encoding="utf-8")
+
+        # The exact same selected -O2/-O3 profile is applied to both WebKit and
+        # ICU, and any manually selected flags describe the target PPC CPU.
+        self.assertIn('ICU_OPT_LEVEL="${ODYSSEY_OPT_LEVEL:-2}"', source)
+        self.assertIn('ICU_TARGET_CFLAGS="${AMIGAOS4_ICU_CFLAGS:--O${ICU_OPT_LEVEL}}"', source)
+        self.assertIn('ICU_TARGET_CXXFLAGS="${AMIGAOS4_ICU_CXXFLAGS:--O${ICU_OPT_LEVEL}}"', source)
+        self.assertIn('ICU_TARGET_CFLAGS+=" $ICU_CPU_FLAGS"', source)
+        self.assertIn('ICU_TARGET_CXXFLAGS+=" $ICU_CPU_FLAGS"', source)
+        self.assertIn('CFLAGS="$ICU_TARGET_CFLAGS"', source)
+        self.assertIn('CXXFLAGS="$ICU_TARGET_CXXFLAGS"', source)
 
     def test_target_data_generators_read_from_completed_host_data(self) -> None:
         source = SCRIPT.read_text(encoding="utf-8")
