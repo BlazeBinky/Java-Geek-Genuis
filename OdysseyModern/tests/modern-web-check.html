@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Odyssey Modern Web Checks</title>
+<style>
+body{font:16px/1.45 sans-serif;max-width:940px;margin:24px auto;padding:0 16px;color:#1d2530}
+h1{margin-bottom:4px}.muted{color:#596579}table{width:100%;border-collapse:collapse;margin:18px 0}
+th,td{text-align:left;padding:9px;border-bottom:1px solid #d5dbe4}th{background:#f1f4f8}
+.status{font-weight:bold}.pass{color:#176b36}.fail{color:#a12c26}.unknown{color:#725c16}
+code{background:#f1f4f8;padding:2px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<h1>Odyssey modern-web capability checks</h1>
+<p class="muted">Run this page inside the actual browser binary. A reported API does not prove its implementation is complete, secure, or fast. Save the result with the browser version and target OS.</p>
+<p id="summary">Checking…</p>
+<table>
+<thead><tr><th>Capability</th><th>Result</th><th>What this check means</th></tr></thead>
+<tbody id="results"></tbody>
+</table>
+<h2>Environment</h2>
+<pre id="environment"></pre>
+<script>
+(function () {
+    "use strict";
+    var rows = [];
+    var ua = navigator.userAgent || "Unavailable";
+    var results = document.getElementById("results");
+
+    function add(name, ok, note) {
+        rows.push({name:name, ok:ok, note:note});
+    }
+    function cssSupport(property, value) {
+        return !!(window.CSS && typeof CSS.supports === "function" && CSS.supports(property, value));
+    }
+    function safeCanvasContext(type) {
+        try {
+            var canvas = document.createElement("canvas");
+            return !!(canvas.getContext && canvas.getContext(type));
+        } catch (e) { return false; }
+    }
+
+    add("Promises", typeof window.Promise === "function", "Promise constructor is exposed.");
+    add("Fetch API", typeof window.fetch === "function", "Fetch API is exposed; this does not verify all request modes.");
+    add("ES modules", "noModule" in document.createElement("script"), "Checks script-module support signal; it does not execute a module.");
+    add("CSS Grid", cssSupport("display", "grid"), "CSS.supports reports Grid support.");
+    add("CSS custom properties", cssSupport("--odyssey-check", "1"), "CSS.supports reports custom-property support.");
+    add("Flexbox", cssSupport("display", "flex"), "CSS.supports reports flex layout support.");
+    add("ResizeObserver", typeof window.ResizeObserver === "function", "Observer API is exposed.");
+    add("IndexedDB", !!(window.indexedDB && typeof window.indexedDB.open === "function"), "IndexedDB is exposed.");
+    add("WebAssembly", typeof window.WebAssembly === "object", "WebAssembly API is exposed; run real module tests to confirm it works.");
+    add("Web Crypto", !!(window.crypto && window.crypto.subtle), "SubtleCrypto is exposed; operation availability depends on context and algorithms.");
+    add("Service workers", !!(navigator.serviceWorker && window.isSecureContext), "Requires service-worker support and a secure context (or localhost).");
+    add("WebGL", safeCanvasContext("webgl") || safeCanvasContext("experimental-webgl"), "Creates a WebGL 1 context; GPU/driver coverage remains untested.");
+    add("WebGL 2", safeCanvasContext("webgl2"), "Creates a WebGL 2 context.");
+    add("Web Audio", !!(window.AudioContext || window.webkitAudioContext), "AudioContext is exposed.");
+    add("Video element", !!(document.createElement("video").canPlayType), "HTML video API exists; codec support needs separate playback tests.");
+    add("Performance timing", !!(window.performance && typeof performance.now === "function"), "High-resolution monotonic timer is exposed.");
+
+    var passed = 0;
+    rows.forEach(function (r) {
+        var tr = document.createElement("tr");
+        var name = document.createElement("td");
+        var status = document.createElement("td");
+        var note = document.createElement("td");
+        name.textContent = r.name;
+        status.textContent = r.ok ? "AVAILABLE" : "MISSING";
+        status.className = "status " + (r.ok ? "pass" : "fail");
+        note.textContent = r.note;
+        tr.appendChild(name); tr.appendChild(status); tr.appendChild(note);
+        results.appendChild(tr);
+        if (r.ok) passed++;
+    });
+    document.getElementById("summary").textContent =
+        passed + " of " + rows.length + " capability signals available. This is a smoke test, not a standards compliance score.";
+    document.getElementById("environment").textContent =
+        "User agent: " + ua + "\n" +
+        "URL: " + location.href + "\n" +
+        "Date: " + new Date().toISOString() + "\n" +
+        "Screen: " + screen.width + "x" + screen.height + "\n" +
+        "Secure context: " + (window.isSecureContext === true ? "yes" : window.isSecureContext === false ? "no" : "unknown") + "\n" +
+        "Hardware concurrency: " + (navigator.hardwareConcurrency || "not exposed");
+}());
+</script>
+</body>
+</html>
