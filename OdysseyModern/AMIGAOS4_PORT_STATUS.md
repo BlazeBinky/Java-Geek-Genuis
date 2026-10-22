@@ -78,3 +78,9 @@ The native-thread flags fixed ICU's target utility link errors, and the next ful
 The cross-build now derives ICU target C and C++ optimization levels from the same `ODYSSEY_OPT_LEVEL` selected for the WebKit build. The optional `AMIGAOS4_CPU_FLAGS` value is also passed to both ICU target compiler commands, so a confirmed target-specific PPC tuning flag is not omitted from Unicode/text processing code. Native Linux ICU generator tools remain built with native host compilers and do not receive PPC flags.
 
 The static regression test checks this flag propagation. An end-to-end balanced AmigaOS 4 PPC build is being requested to validate the change against the pinned source/toolchain. This is a build consistency optimization; no runtime speedup is claimed until the resulting binary runs the benchmark on the target hardware.
+
+## ICU cross-endian data packaging correction (October 22, 2026)
+
+The last full OS4 PPC attempt got through ICU resource generation, then failed when ICU 55.1's host-native `genccode` reported that it only supports same-endianness ELF objects. The target data archive is big-endian PPC, while the host generator is x86-64 Linux. The target ICU make now passes `PKGDATA_OPTS="-O ../data/icupkg.inc -w"` so the host `pkgdata` tool emits generated C arrays and the configured `ppc-amigaos-gcc` compiles them into target-native PPC objects. This avoids trying to use a host ELF object to embed target-endian data.
+
+A static regression test checks that this mode remains enabled. The full cross-build still needs to finish through ICU install, WebKit compile/link, and the application startup/runtime tests. The workaround is not considered proven until the CI build gets past the previous packaging error.
