@@ -63,3 +63,7 @@ The complete ICU target build progressed beyond platform-fragment generation, th
 
 A successful static check is not a successful browser build. There is still no verified OS4 executable, no on-device page-load benchmark, and no proof that modern sites are secure or compatible. The current engine configuration uses the C-loop JavaScript interpreter on PPC because this branch has no PowerPC JIT backend; compiler optimization flags cannot replace one.
 
+## ICU data-generation cross-build fix (October 22, 2026)
+
+The native-thread flags fixed ICU's target utility link errors, and the next full PPC attempt completed target utility compilation but failed at the first target break-iterator data rule: the Linux-host `genbrk` executable was told to initialize ICU from the incomplete big-endian target tree `out/build/icudt55b`, then returned `U_FILE_ACCESS_ERROR`. The host build's equivalent `icudt55l` data tree was already complete. The target Makefile template now redirects only the two generator input-directory arguments (`-i`) to the completed host-data tree while preserving the target output directories. A regression test checks that the patch is installed before target configure and make. The next full PPC run must verify this correction before any Odyssey/WebKit build can be considered.
+
