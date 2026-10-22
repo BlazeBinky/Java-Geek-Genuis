@@ -15,4 +15,10 @@ Move-Item $folder.FullName $root
 Remove-Item $extract -Recurse -Force
 Remove-Item $zip -Force
 Write-Host "Source extracted to: $root"
+$patcher = Join-Path $PSScriptRoot "prepare-upstream.py"
+$python = Get-Command python -ErrorAction SilentlyContinue
+if (-not $python) { throw "Python 3 is required to apply the downstream modernization changes." }
+& $python.Source $patcher $root
+if ($LASTEXITCODE -ne 0) { throw "Downstream preparation failed. Review the error rather than continuing with an unpatched tree." }
+Write-Host "Downstream build-system patches applied."
 Write-Host "This is source code, not a compiled browser. See OdysseyModern/README.md for target/build caveats."
