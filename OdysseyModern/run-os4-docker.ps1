@@ -9,10 +9,16 @@ param(
     [string]$Ccache = "auto",
     [ValidateRange(0, 64)]
     [int]$Jobs = 0,
-    [string]$Image = "walkero/amigagccondocker:os4-gcc11-3.5.2"
+    [string]$Image = "walkero/amigagccondocker:os4-gcc11-3.5.2",
+    [string]$UpstreamRef = "",
+    [string]$CpuFlags = ""
 )
 
 $ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($UpstreamRef)) { $UpstreamRef = $env:ODYSSEY_UPSTREAM_REF }
+if ([string]::IsNullOrWhiteSpace($UpstreamRef)) { $UpstreamRef = "8e44b6d8d2e8c57a59a878152b81304e220ceb7a" }
+if ([string]::IsNullOrWhiteSpace($CpuFlags)) { $CpuFlags = $env:AMIGAOS4_CPU_FLAGS }
 
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     throw "Docker was not found. Install Docker Desktop, enable its Linux container engine, and retry."
@@ -34,6 +40,7 @@ $dockerArgs = @(
     "--env", "ODYSSEY_BUILD_PROFILE=$Profile",
     "--env", "ODYSSEY_OS4_MEDIA=$Media",
     "--env", "ODYSSEY_OS4_XSLT=$Xslt",
+    "--env", "ODYSSEY_UPSTREAM_REF=$UpstreamRef",
     "--env", "ODYSSEY_CCACHE=$Ccache"
 )
 
@@ -44,13 +51,17 @@ if ($Ccache -ne "off") {
     )
 }
 
+if (-not [string]::IsNullOrWhiteSpace($CpuFlags)) {
+    $dockerArgs += @("--env", "AMIGAOS4_CPU_FLAGS=$CpuFlags")
+}
 if ($Jobs -gt 0) {
     $dockerArgs += @("--env", "BUILD_JOBS=$Jobs")
 }
 
 $dockerArgs += @($Image, "bash", "./OdysseyModern/fetch-and-build-os4.sh")
 Write-Host "Starting experimental AmigaOS 4 PPC cross-build."
-Write-Host "Profile: $Profile | Media: $Media | XSLT: $Xslt | Ccache: $Ccache | Jobs: $(if ($Jobs -gt 0) { $Jobs } else { 'auto' })"
+Write-Host "Upstream ref: $UpstreamRef"
+Write-Host "Profile: $Profile | Media: $Media | XSLT: $Xslt | CPU flags: $(if ([string]::IsNullOrWhiteSpace($CpuFlags)) { 'generic PPC' } else { $CpuFlags }) | Ccache: $Ccache | Jobs: $(if ($Jobs -gt 0) { $Jobs } else { 'auto' })"
 Write-Host "Compiler logs will be under cross-build-amigaos4/."
 Write-Host "This does not promise the newer Odyssey engine is already ported to OS4."
 & docker @dockerArgs
