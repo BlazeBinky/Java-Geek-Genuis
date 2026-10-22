@@ -17,6 +17,10 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$cacheHostDir = Join-Path $env:LOCALAPPDATA "OdysseyBrowser\ccache"
+if ($Ccache -ne "off") {
+    New-Item -ItemType Directory -Force -Path $cacheHostDir | Out-Null
+}
 Write-Host "Pulling AmigaOS 4 PPC build environment: $Image"
 & docker pull $Image
 if ($LASTEXITCODE -ne 0) { throw "Docker image pull failed." }
@@ -27,8 +31,16 @@ $dockerArgs = @(
     "--workdir", "/opt/code",
     "--env", "ODYSSEY_BUILD_PROFILE=$Profile",
     "--env", "ODYSSEY_OS4_MEDIA=$Media",
-    "--env", "ODYSSEY_OS4_XSLT=$Xslt"
+    "--env", "ODYSSEY_OS4_XSLT=$Xslt",
+    "--env", "ODYSSEY_CCACHE=$Ccache"
 )
+
+if ($Ccache -ne "off") {
+    $dockerArgs += @(
+        "--volume", "$($cacheHostDir):/opt/odyssey-ccache",
+        "--env", "CCACHE_DIR=/opt/odyssey-ccache"
+    )
+}
 
 if ($Jobs -gt 0) {
     $dockerArgs += @("--env", "BUILD_JOBS=$Jobs")
@@ -36,7 +48,7 @@ if ($Jobs -gt 0) {
 
 $dockerArgs += @($Image, "bash", "./OdysseyModern/fetch-and-build-os4.sh")
 Write-Host "Starting experimental AmigaOS 4 PPC cross-build."
-Write-Host "Profile: $Profile | Media: $Media | XSLT: $Xslt | Jobs: $(if ($Jobs -gt 0) { $Jobs } else { 'auto' })"
+Write-Host "Profile: $Profile | Media: $Media | XSLT: $Xslt | Ccache: $Ccache | Jobs: $(if ($Jobs -gt 0) { $Jobs } else { 'auto' })"
 Write-Host "Compiler logs will be under cross-build-amigaos4/."
 Write-Host "This does not promise the newer Odyssey engine is already ported to OS4."
 & docker @dockerArgs
