@@ -25,8 +25,13 @@ case "$CCACHE_MODE" in
   off) ;;
   *) fail "ODYSSEY_CCACHE must be auto, on, or off." ;;
 esac
+# The Docker image exports CC/CXX/AR/RANLIB as PPC cross tools globally.
+# Override all four for native generator utilities, or configure may try to
+# execute a PPC test binary on the Linux build host.
 HOST_CC=gcc
 HOST_CXX=g++
+HOST_AR=ar
+HOST_RANLIB=ranlib
 TARGET_CC=ppc-amigaos-gcc
 TARGET_CXX=ppc-amigaos-g++
 if [[ "$USE_CCACHE" == "1" ]]; then
@@ -34,6 +39,8 @@ if [[ "$USE_CCACHE" == "1" ]]; then
   mkdir -p "$CCACHE_DIR"
   HOST_CC="ccache gcc"
   HOST_CXX="ccache g++"
+  HOST_AR="ccache ar"
+  HOST_RANLIB="ccache ranlib"
   TARGET_CC="ccache ppc-amigaos-gcc"
   TARGET_CXX="ccache ppc-amigaos-g++"
   printf 'ICU compiler cache enabled (%s)\n' "$CCACHE_DIR"
@@ -63,7 +70,7 @@ if [[ ! -f "$HOST_BUILD/config/icucross.mk" || ! -x "$HOST_BUILD/bin/genrb" ]]; 
   printf '\nConfiguring host ICU tools from pinned revision %s...\n' "$ICU_REVISION"
   (
     cd "$HOST_BUILD"
-    CC="$HOST_CC" CXX="$HOST_CXX" "$ICU_CONFIGURE" \
+    CC="$HOST_CC" CXX="$HOST_CXX" AR="$HOST_AR" RANLIB="$HOST_RANLIB" "$ICU_CONFIGURE" \
       --prefix="$ICU_BUILD_ROOT/host-install" \
       --disable-shared --enable-static \
       --with-data-packaging=static \
