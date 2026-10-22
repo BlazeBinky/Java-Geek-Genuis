@@ -52,6 +52,17 @@ class ICUPlatformFragmentTests(unittest.TestCase):
         self.assertIn('CFLAGS="$ICU_TARGET_CFLAGS"', source)
         self.assertIn('CXXFLAGS="$ICU_TARGET_CXXFLAGS"', source)
 
+    def test_target_data_package_uses_target_compiler_for_endian_safe_objects(self) -> None:
+        source = SCRIPT.read_text(encoding="utf-8")
+
+        # ICU 55.1's native Linux genccode can't emit an ELF object for a PPC
+        # data archive with the opposite byte order. The -w path generates C
+        # arrays and compiles them using the cross compiler configured in
+        # icupkg.inc; don't regress to the host-object packaging path.
+        self.assertIn('make PKGDATA_OPTS="-O ../data/icupkg.inc -w"', source)
+        self.assertIn('ppc-amigaos-gcc', source)
+        self.assertIn('ICU_HOST_DATA_DIR="$HOST_BUILD/data/out/build/icudt55l"', source)
+
     def test_target_data_generators_read_from_completed_host_data(self) -> None:
         source = SCRIPT.read_text(encoding="utf-8")
 
