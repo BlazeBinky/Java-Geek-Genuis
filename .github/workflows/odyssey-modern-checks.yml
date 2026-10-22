@@ -36,6 +36,7 @@ jobs:
         run: |
           bash -n OdysseyModern/fetch-and-build-aros.sh
           bash -n OdysseyModern/fetch-and-build-os4.sh
+          bash -n OdysseyModern/build-icu-os4.sh
           bash -n OdysseyModern/run-os4-docker.sh
       - name: Validate experimental OS4 CMake toolchain syntax
         run: cmake -P OdysseyModern/toolchains/AMIGAOS4.cmake
@@ -45,7 +46,7 @@ jobs:
   os4-configure:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[os4-configure]'))
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -145,5 +146,9 @@ jobs:
             cross-build-amigaos4/CMakeCache.txt
             cross-build-amigaos4/bin/**
             cross-build-amigaos4/lib/**
+            cross-build-icu-os4/icu-host-build.log
+            cross-build-icu-os4/icu-target-build.log
+            cross-build-icu-os4/ICU-BUILD-INFO.txt
+            cross-build-icu-os4/target-install/lib/*.a
           if-no-files-found: warn
           compression-level: 1
