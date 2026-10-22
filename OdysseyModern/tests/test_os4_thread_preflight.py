@@ -33,6 +33,15 @@ class NativeThreadPreflightTests(unittest.TestCase):
         self.assertIn('-o "$THREAD_CHECK_DIR/os4-thread-check"', source)
         self.assertNotIn(' "$THREAD_CHECK_DIR/os4-thread-check"\n', source)
 
+    def test_docker_wrappers_forward_upstream_ref_and_cpu_tuning(self) -> None:
+        linux = (ROOT / "run-os4-docker.sh").read_text(encoding="utf-8")
+        windows = (ROOT / "run-os4-docker.ps1").read_text(encoding="utf-8")
+
+        self.assertIn('--env "ODYSSEY_UPSTREAM_REF=$UPSTREAM_REF"', linux)
+        self.assertIn('--env "AMIGAOS4_CPU_FLAGS=$AMIGAOS4_CPU_FLAGS"', linux)
+        self.assertIn('"ODYSSEY_UPSTREAM_REF=$UpstreamRef"', windows)
+        self.assertIn('"AMIGAOS4_CPU_FLAGS=$CpuFlags"', windows)
+
 
 if __name__ == "__main__":
     unittest.main()
