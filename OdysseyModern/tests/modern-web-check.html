@@ -53,7 +53,7 @@ code{background:#f1f4f8;padding:2px 5px;border-radius:4px}
     }
 
     function updateSummary() {
-        var i, r;
+        var i, r, missing = 0;
         passed = 0;
         failed = 0;
         skipped = 0;
@@ -66,13 +66,15 @@ code{background:#f1f4f8;padding:2px 5px;border-radius:4px}
                 else available++;
             } else if (r.status === "FAIL" || r.status === "MISSING") {
                 if (r.status === "FAIL") failed++;
+                else missing++;
             } else if (r.status === "SKIP") skipped++;
             if (r.status !== "PENDING") finished++;
         }
         document.getElementById("summary").textContent =
             "Functional checks: " + passed + " passed, " + failed +
             " failed, " + skipped + " skipped. Capability signals: " +
-            available + " available. " + (rows.length - finished) + " pending.";
+            available + " available, " + missing + " missing. " +
+            (rows.length - finished) + " pending.";
     }
 
     function complete(index, status, note) {
