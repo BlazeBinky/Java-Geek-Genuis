@@ -113,9 +113,13 @@ new = """#elif U_PLATFORM == U_PF_OS400
 #else
 #   define U_TZNAME tzname
 #endif"""
-if text.count(old) != 1:
+if text.count(new) == 1:
+    # Idempotent: local developers can rerun the build after a failed compile.
+    pass
+elif text.count(old) == 1:
+    path.write_text(text.replace(old, new), encoding="utf-8")
+else:
     raise SystemExit("ERROR: ICU putilimp.h timezone patch anchor changed; refusing to guess.")
-path.write_text(text.replace(old, new), encoding="utf-8")
 PY
 
 rm -f "$TARGET_BUILD/config.status"
