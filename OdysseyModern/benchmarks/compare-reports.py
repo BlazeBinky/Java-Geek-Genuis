@@ -59,15 +59,17 @@ def main() -> int:
             before = numeric_median(baseline, key)
             after = numeric_median(candidate, key)
             if before is None or after is None:
-                print(f"{label:<17}  {str(before or 'n/a'):>12}  {str(after or 'n/a'):>13}  unavailable")
+                before_text = "n/a" if before is None else f"{before:.2f}"
+                after_text = "n/a" if after is None else f"{after:.2f}"
+                print(f"{label:<17}  {before_text:>12}  {after_text:>13}  unavailable")
                 continue
             if before == 0:
                 change = "baseline is 0 ms"
             else:
                 change_pct = (after - before) / before * 100.0
-                if change_pct < -0.05:
+                if change_pct < -0.5:
                     change = f"{abs(change_pct):.1f}% faster"
-                elif change_pct > 0.05:
+                elif change_pct > 0.5:
                     change = f"{change_pct:.1f}% slower"
                 else:
                     change = "no meaningful change"
