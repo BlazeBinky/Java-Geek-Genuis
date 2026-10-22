@@ -56,13 +56,26 @@ else
 fi
 FREETYPE_INCLUDE_DIR="${AMIGAOS4_FREETYPE_INCLUDE_DIR:-$SDK_ROOT/local/common/include/freetype2}"
 LIBXML2_INCLUDE_DIR="${AMIGAOS4_LIBXML2_INCLUDE_DIR:-$SDK_ROOT/local/common/include/libxml2}"
-LIBXSLT_INCLUDE_DIR="${AMIGAOS4_LIBXSLT_INCLUDE_DIR:-$SDK_ROOT/local/common/include/libxslt}"
+# Libxslt is absent from the pinned base SDK image. Enable XSLT only when its
+# target headers and target library are installed.
+if [[ -n "${AMIGAOS4_LIBXSLT_INCLUDE_DIR:-}" ]]; then
+  LIBXSLT_INCLUDE_DIR="$AMIGAOS4_LIBXSLT_INCLUDE_DIR"
+elif [[ -d "$SDK_ROOT/local/common/include/libxslt" ]]; then
+  LIBXSLT_INCLUDE_DIR="$SDK_ROOT/local/common/include"
+elif [[ -d "$SDK_ROOT/local/newlib/include/libxslt" ]]; then
+  LIBXSLT_INCLUDE_DIR="$SDK_ROOT/local/newlib/include"
+else
+  LIBXSLT_INCLUDE_DIR=""
+fi
 export AMIGAOS4_SDK_ROOT="$SDK_ROOT"
 export AMIGAOS4_MUI_INCLUDE_DIR="$MUI_INCLUDE_DIR"
 
-for dir in "$MUI_INCLUDE_DIR" "$CAIRO_INCLUDE_DIR" "$FREETYPE_INCLUDE_DIR" "$LIBXML2_INCLUDE_DIR" "$LIBXSLT_INCLUDE_DIR"; do
+for dir in "$MUI_INCLUDE_DIR" "$CAIRO_INCLUDE_DIR" "$FREETYPE_INCLUDE_DIR" "$LIBXML2_INCLUDE_DIR"; do
   [[ -d "$dir" ]] || fail "Required target include directory not found: $dir. Set the matching AMIGAOS4_*_INCLUDE_DIR variable."
 done
+if [[ "$XSLT_FLAG" == "ON" ]]; then
+  [[ -n "$LIBXSLT_INCLUDE_DIR" && -d "$LIBXSLT_INCLUDE_DIR/libxslt" ]] || fail "XSLT was requested but a header root containing libxslt/*.h was not found. Install target libxslt and set AMIGAOS4_LIBXSLT_INCLUDE_DIR to that include root."
+fi
 
 if [[ -d "$SOURCE_DIR/.git" ]]; then
   ORIGIN="$(git -C "$SOURCE_DIR" remote get-url origin)"
