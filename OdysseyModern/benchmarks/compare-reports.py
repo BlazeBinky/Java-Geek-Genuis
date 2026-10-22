@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare two JSON reports exported by browser-benchmark.html (v2)."""
+"""Compare v2/v3 JSON reports exported by browser-benchmark.html."""
 from __future__ import annotations
 
 import argparse
@@ -11,6 +11,8 @@ from typing import Any
 CATEGORIES = (
     ("javascript", "JavaScript loop"),
     ("arrays", "Array fill + scan"),
+    ("objects", "Object/property"),
+    ("stringsRegex", "String/regex"),
     ("layout", "DOM/layout"),
     ("canvas", "Canvas drawing"),
 )
@@ -21,8 +23,8 @@ def load_report(path: Path) -> dict[str, Any]:
         report = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ValueError(f"cannot read valid JSON from {path}: {exc}") from exc
-    if report.get("benchmark") != "odyssey-browser-performance" or report.get("version") != 2:
-        raise ValueError(f"{path} is not an Odyssey browser benchmark v2 report")
+    if report.get("benchmark") != "odyssey-browser-performance" or report.get("version") not in (2, 3):
+        raise ValueError(f"{path} is not a supported Odyssey browser benchmark v2/v3 report")
     medians = report.get("mediansMs")
     if not isinstance(medians, dict):
         raise ValueError(f"{path} has no mediansMs object")
@@ -40,15 +42,17 @@ def numeric_median(report: dict[str, Any], category: str) -> float | None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Compare balanced.json (baseline) with fast.json (candidate)."
+        description="Compare a baseline JSON report with a candidate report."
     )
-    parser.add_argument("baseline", type=Path, help="baseline JSON report, usually the balanced build")
-    parser.add_argument("candidate", type=Path, help="candidate JSON report, usually the fast build")
+    parser.add_argument("baseline", type=Path, help="baseline report, normally the balanced build")
+    parser.add_argument("candidate", type=Path, help="candidate report, normally the fast build")
     args = parser.parse_args()
 
     try:
         baseline = load_report(args.baseline)
         candidate = load_report(args.candidate)
+        if baseline.get("version") != candidate.get("version"):
+            print("WARNING: benchmark versions differ; only directly shared categories are comparable.")
         if baseline.get("userAgent") != candidate.get("userAgent"):
             print("WARNING: browser user-agent differs; these runs may use different engines or versions.")
         if baseline.get("screen") != candidate.get("screen"):
@@ -74,7 +78,7 @@ def main() -> int:
                 else:
                     change = "no meaningful change"
             print(f"{label:<17}  {before:>12.2f}  {after:>13.2f}  {change}")
-        print("\nLower milliseconds are better. Compare only matching benchmark versions and hardware.")
+        print("\nLower milliseconds are better. Compare only matching benchmark versions and similar hardware.")
         print("This synthetic benchmark is not a complete browser performance score.")
     except ValueError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
