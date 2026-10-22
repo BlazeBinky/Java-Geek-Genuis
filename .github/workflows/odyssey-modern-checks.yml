@@ -8,15 +8,33 @@ on:
     branches:
       - odyssey-modern-browser-work
   workflow_dispatch:
+    inputs:
+      action:
+        description: "Run the cross-build, configure-only check, or static checks"
+        required: true
+        type: choice
+        options:
+          - full-build
+          - configure-only
+          - checks-only
+        default: full-build
+      profile:
+        description: "balanced favors size/build stability; fast uses -O3"
+        required: true
+        type: choice
+        options:
+          - balanced
+          - fast
+        default: balanced
 
 permissions:
   contents: read
 
 # Keep fast checks fresh without terminating multi-hour cross-compiles on every
-# documentation/test commit. Only a newer explicit full-build commit cancels an
-# older full build; ordinary pushes run in the separate "checks" group.
+# documentation/test commit. A newer explicit full build can replace an older
+# one; routine check commits use a separate group.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[os4-build]') && 'full-build' || 'checks' }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ ((github.event_name == 'push' && contains(github.event.head_commit.message, '[os4-build]')) || (github.event_name == 'workflow_dispatch' && inputs.action == 'full-build')) && 'full-build' || 'checks' }}
   cancel-in-progress: true
 
 jobs:
@@ -55,7 +73,7 @@ jobs:
         run: git diff --check
 
   os4-configure:
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[os4-configure]'))
+    if: (github.event_name == 'workflow_dispatch' && inputs.action == 'configure-only') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[os4-configure]'))
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -70,7 +88,7 @@ jobs:
             --volume "$PWD:/opt/code" \
             --workdir /opt/code \
             --env ODYSSEY_CONFIGURE_ONLY=1 \
-            --env ODYSSEY_BUILD_PROFILE=balanced \
+            --env ODYSSEY_BUILD_PROFILE=${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'balanced' }} \
             walkero/amigagccondocker:os4-gcc11-3.5.2 \
             bash OdysseyModern/fetch-and-build-os4.sh
       - name: Upload configuration logs
@@ -87,7 +105,7 @@ jobs:
   os4-build:
     # Full PPC compilation is deliberately explicit because WebKit is large and
     # the standard runner has finite memory/time. Push a commit with [os4-build].
-    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[os4-build]')
+    if: (github.event_name == 'workflow_dispatch' && inputs.action == 'full-build') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[os4-build]'))
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
@@ -113,7 +131,7 @@ jobs:
             --env BUILD_JOBS=1 \
             --env CCACHE_DIR=/opt/odyssey-ccache \
             --env ODYSSEY_CCACHE=auto \
-            --env ODYSSEY_BUILD_PROFILE=balanced \
+            --env ODYSSEY_BUILD_PROFILE=${{ github.event_name == 'workflow_dispatch' && inputs.profile || (contains(github.event.head_commit.message, '[fast]') && 'fast' || 'balanced') }} \
             walkero/amigagccondocker:os4-gcc11-3.5.2 \
             bash OdysseyModern/fetch-and-build-os4.sh
       - name: Package experimental application if the link succeeds
