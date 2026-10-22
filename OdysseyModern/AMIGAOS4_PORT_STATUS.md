@@ -55,3 +55,9 @@ The next ICU issue found in the PPC port is that ICU 55.1's generic timezone cod
 
 Performance remains deliberately conservative until an actual PPC binary can be benchmarked: the default profile is `-O2`, the experimental `fast` profile is `-O3`, and ccache only shortens rebuilds. The current JavaScript engine has no PPC JIT backend, so interpreter performance is still a known major limitation. Do not call it fast or fully modern without target-device measurements and a proper PPC JIT implementation.
 
+## Native PPC C++ threading correction (October 22, 2026)
+
+The complete ICU target build progressed beyond platform-fragment generation, then stopped linking the target `makeconv` utility with unresolved `__gthread_*` references from the AmigaOS GCC C++ runtime. This is a known toolchain configuration issue: select the native threading backend with `-athread=native` and link `-lpthread`. The ICU cross-build and the final Odyssey target link now request those settings, and the static regression test checks both. The next full PPC build must verify that ICU now links and expose any following WebKit errors.
+
+A successful static check is not a successful browser build. There is still no verified OS4 executable, no on-device page-load benchmark, and no proof that modern sites are secure or compatible. The current engine configuration uses the C-loop JavaScript interpreter on PPC because this branch has no PowerPC JIT backend; compiler optimization flags cannot replace one.
+
