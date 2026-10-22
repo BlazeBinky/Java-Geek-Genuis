@@ -109,6 +109,11 @@ cmake -S "$SOURCE_DIR" -B "$BUILD_DIR" \
   -DENABLE_VIDEO="$MEDIA_FLAG" \
   -DENABLE_MEDIA_SOURCE="$MEDIA_FLAG" 2>&1 | tee "$BUILD_DIR/odyssey-configure.log"
 
+if [[ "${ODYSSEY_CONFIGURE_ONLY:-0}" == "1" ]]; then
+  printf '\\nCMake configuration completed for upstream revision %s. Compile/link/runtime validation remains outstanding.\\n' "$REVISION"
+  exit 0
+fi
+
 # WebKit is a heavy C++ codebase. Keep memory use conservative unless overridden.
 if [[ -n "${BUILD_JOBS:-}" ]]; then
   JOBS="$BUILD_JOBS"
