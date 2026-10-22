@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+REPO_URL="https://github.com/deadwood2/OdysseyWebBrowser.git"
+BRANCH="odyssey"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_DIR="${ODYSSEY_SOURCE_DIR:-$PWD/odyssey-upstream-os4}"
+SDK_ROOT="${AMIGAOS4_SDK_ROOT:-/usr/ppc-amigaos/SDK}"
+PROFILE="${ODYSSEY_BUILD_PROFILE:-balanced}"
+MEDIA="${ODYSSEY_OS4_MEDIA:-off}"
+
+fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+for tool in git python3 cmake make ppc-amigaos-gcc ppc-amigaos-g++; do
+  command -v "$tool" >/dev/null 2>&1 || fail "$tool not found. Use an AmigaOS 4 PPC cross-compiler environment with the matching SDK."
+done
+
+case "$PROFILE" in
+  balanced) export ODYSSEY_OPT_LEVEL=2 ;;
+  fast)     export ODYSSEY_OPT_LEVEL=3 ;;
+  *) fail "ODYSSEY_BUILD_PROFILE must be 'balanced' or 'fast'." ;;
+esac
+case "$MEDIA" in
+  off) MEDIA_FLAGS=(-DENABLE_VIDEO=OFF -DENABLE_MEDIA_SOURCE=OFF) ;;
+  on)  MEDIA_FLAGS=(-DENABLE_VIDEO=ON -DENABLE_MEDIA_SOURCE=ON) ;;
+  *) fail "ODYSSEY_OS4_MEDIA must be 'on' or 'off'." ;;
+esac
+
+MUI_INCLUDE_DIR="${AMIGAOS4_MUI_INCLUDE_DIR:-$SDK_ROOT/MUI/C/include}"
+CAIRO_INCLUDE_DIR="${AMIGAOS4_CAIRO_INCLUDE_DIR:-$SDK_ROOT/local/newlib/include/cairo}"
+FREETYPE_INCLUDE_DIR="${AMIGAOS4_FREETYPE_INCLUDE_DIR:-$SDK_ROOT/local/common/include/freetype2}"
+LIBXML2_INCLUDE_DIR="${AMIGAOS4_LIBXML2_INCLUDE_DIR:-$SDK_ROOT/local/common/include/libxml2}"
+LIBXSLT_INCLUDE_DIR="${AMIGAOS4_LIBXSLT_INCLUDE_DIR:-$SDK_ROOT/local/common/include/libxslt}"
+
+for dir in "$MUI_INCLUDE_DIR" "$CAIRO_INCLUDE_DIR" "$FREETYPE_INCLUDE_DIR" "$LIBXML2_INCLUDE_DIR" "$LIBXSLT_INCLUDE_DIR"; do
+  [[ -d "$dir" ]] || fail "Required target include directory not found: $dir. Set the matching AMIGAOS4_*_INCLUDE_DIR variable."
+done
+
+if [[ -d "$SOURCE_DIR/.git" ]]; then
+  ORIGIN="$(git -C "$SOURCE_DIR" remote get-url origin)"
+  [[ "$ORIGIN" == "$REPO_URL" || "$ORIGIN" == "${REPO_URL%.git}" ]] || fail "Existing source directory has a different Git origin: $ORIGIN"
+  while IFS= read -r status_line; do
+    [[ -z "$status_line" ]] && continue
+    fail "Refusing to reset local source changes in '$SOURCE_DIR' (${status_line:3}). Back them up or select a fresh ODYSSEY_SOURCE_DIR."
+  done < <(git -C "$SOURCE_DIR" status --porcelain)
+  git -C "$SOURCE_DIR" fetch --depth=1 origin "$BRANCH"
+  git -C "$SOURCE_DIR" checkout "$BRANCH"
+  git -C "$SOURCE_DIR" reset --hard "origin/$BRANCH"
+else
+  [[ ! -e "$SOURCE_DIR" ]] || fail "Source path exists but is not a clean Git checkout: $SOURCE_DIR"
+  git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$SOURCE_DIR"
+fi
+
+REVISION="$(git -C "$SOURCE_DIR" rev-parse HEAD)"
+BUILD_DIR="$SOURCE_DIR/cross-build-amigaos4"
+mkdir -p "$BUILD_DIR"
+
+if [[ -f "$BUILD_DIR/CMakeCache.txt" ]] && ! grep -Fq "$SCRIPT_DIR/toolchains/AMIGAOS4.cmake" "$BUILD_DIR/CMakeCache.txt"; then
+  fail "Build directory already has a different toolchain configured. Choose a fresh ODYSSEY_SOURCE_DIR."
+fi
+
+printf 'Source revision: %s\nSDK root: %s\nProfile: %s (-O%s)\nMedia build: %s\n' "$REVISION" "$SDK_ROOT" "$PROFILE" "$ODYSSEY_OPT_LEVEL" "$MEDIA"
+printf 'Configuring experimental AmigaOS 4 PPC build. The newer upstream branch may require additional OS4 platform-port fixes.\n'
+
+cmake -S "$SOURCE_DIR" -B "$BUILD_DIR" \
+  -DCMAKE_TOOLCHAIN_FILE="$SCRIPT_DIR/toolchains/AMIGAOS4.cmake" \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DPORT=MUI \
+  -DCMAKE_SYSTEM_PROCESSOR=ppc \
+  -DCMAKE_C_COMPILER=ppc-amigaos-gcc \
+  -DCMAKE_CXX_COMPILER=ppc-amigaos-g++ \
+  -DCAIRO_INCLUDE_DIRS="$CAIRO_INCLUDE_DIR" \
+  -DFREETYPE_INCLUDE_DIRS="$FREETYPE_INCLUDE_DIR" \
+  -DLIBXML2_INCLUDE_DIR="$LIBXML2_INCLUDE_DIR" \
+  -DLIBXSLT_INCLUDE_DIR="$LIBXSLT_INCLUDE_DIR" \
+  -DENABLE_VIDEO="$( [[ "$MEDIA" == "on" ]] && printf ON || printf OFF )" \
+  -DENABLE_MEDIA_SOURCE="$( [[ "$MEDIA" == "on" ]] && printf ON || printf OFF )" \
+  "${MEDIA_FLAGS[@]}" 2>&1 | tee "$BUILD_DIR/odyssey-configure.log"
+
+# WebKit is a heavy C++ codebase. Keep memory use conservative unless overridden.
+if [[ -n "${BUILD_JOBS:-}" ]]; then
+  JOBS="$BUILD_JOBS"
+elif [[ -r /proc/meminfo ]]; then
+  MEM_KB="$(awk '/MemTotal:/ {print $2}' /proc/meminfo)"
+  if (( MEM_KB < 16000000 )); then JOBS=1
+  elif (( MEM_KB < 32000000 )); then JOBS=2
+  elif (( MEM_KB < 64000000 )); then JOBS=4
+  else JOBS=6
+  fi
+else
+  JOBS=1
+fi
+[[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || fail "BUILD_JOBS must be a positive integer."
+
+printf 'Starting compile with %s job(s). A low-memory host may run out of memory.\n' "$JOBS"
+cmake --build "$BUILD_DIR" --parallel "$JOBS" 2>&1 | tee "$BUILD_DIR/odyssey-build.log"
+printf '\nBuild step finished for upstream revision %s.\n' "$REVISION"
+printf 'This is not yet a verified OS4 application: inspect the log, then test on AmigaOS 4.1 Update 3 hardware/emulator.\n'
