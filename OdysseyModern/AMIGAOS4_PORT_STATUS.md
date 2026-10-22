@@ -1,3 +1,7 @@
+## ICU all-generator input correction (October 22, 2026)
+
+The latest run stopped in the guard before target configure because the pinned ICU 55.1 `data/Makefile.in` contains 29 occurrences of `-i $(BUILDDIR)`, not two. The script now asserts the expected 29 input paths and redirects every `-i` to the completed host data tree, while leaving the output `-d`/`-o` paths unchanged. The updated regression check passed its static review; the next full build will verify the actual host tools can generate the complete target data set.
+
 # AmigaOS 4.1 Update 3: experimental port status
 
 ## What exists upstream
