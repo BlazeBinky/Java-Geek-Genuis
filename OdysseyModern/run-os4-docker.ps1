@@ -3,6 +3,8 @@ param(
     [string]$Profile = "balanced",
     [ValidateSet("off", "on")]
     [string]$Media = "off",
+    [ValidateSet("off", "on")]
+    [string]$Xslt = "off",
     [ValidateRange(0, 64)]
     [int]$Jobs = 0,
     [string]$Image = "walkero/amigagccondocker:os4-gcc11-3.5.2"
@@ -24,7 +26,8 @@ $dockerArgs = @(
     "--volume", "$($repoRoot):/opt/code",
     "--workdir", "/opt/code",
     "--env", "ODYSSEY_BUILD_PROFILE=$Profile",
-    "--env", "ODYSSEY_OS4_MEDIA=$Media"
+    "--env", "ODYSSEY_OS4_MEDIA=$Media",
+    "--env", "ODYSSEY_OS4_XSLT=$Xslt"
 )
 
 if ($Jobs -gt 0) {
@@ -33,7 +36,7 @@ if ($Jobs -gt 0) {
 
 $dockerArgs += @($Image, "bash", "./OdysseyModern/fetch-and-build-os4.sh")
 Write-Host "Starting experimental AmigaOS 4 PPC cross-build."
-Write-Host "Profile: $Profile | Media: $Media | Jobs: $(if ($Jobs -gt 0) { $Jobs } else { 'auto' })"
+Write-Host "Profile: $Profile | Media: $Media | XSLT: $Xslt | Jobs: $(if ($Jobs -gt 0) { $Jobs } else { 'auto' })"
 Write-Host "Compiler logs will be under odyssey-upstream-os4/cross-build-amigaos4/."
 Write-Host "This does not promise the newer Odyssey engine is already ported to OS4."
 & docker @dockerArgs
