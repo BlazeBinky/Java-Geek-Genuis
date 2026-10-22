@@ -6,20 +6,20 @@
 <title>Odyssey Browser Performance Bench</title>
 <style>
 body{font:16px/1.45 sans-serif;max-width:940px;margin:24px auto;padding:0 16px;color:#1d2530}
-button{font:inherit;padding:10px 15px;cursor:pointer}pre{white-space:pre-wrap;background:#f1f4f8;padding:14px;overflow:auto}
+button{font:inherit;padding:10px 15px;cursor:pointer}pre,textarea{white-space:pre-wrap;background:#f1f4f8;padding:14px;overflow:auto}
 #layout-box{position:absolute;left:-10000px;top:0;width:720px}#canvas{width:640px;height:220px;border:1px solid #aeb8c7}
 .muted{color:#596579}
 </style>
 </head>
 <body>
-<h1>Odyssey Browser Performance Bench</h1>
-<p class="muted">Run five times after one warm-up, on the same device, with the same power settings and no heavy background apps. Lower milliseconds are better. Results are not comparable across different hardware or test versions.</p>
+<h1>Odyssey Browser Performance Bench v3</h1>
+<p class="muted">Run five times after one warm-up, on the same device, with identical power settings and no heavy background apps. Lower milliseconds are better. This page intentionally uses conservative JavaScript syntax so older browser builds can run it. Results are not comparable across different hardware or benchmark versions.</p>
 <button id="run">Run benchmark</button>
 <p id="state">Ready.</p>
 <pre id="output">No benchmark results yet.</pre>
 <h2>Machine-readable results</h2>
-<p class="muted">After a run, select and copy this JSON to keep a record or compare builds.</p>
-<textarea id="raw-output" rows="14" readonly style="width:100%;box-sizing:border-box;font:13px/1.4 monospace">No benchmark results yet.</textarea>
+<p class="muted">After a run, copy the JSON report and save it next to the build settings. The comparison script supports both v2 and v3 reports.</p>
+<textarea id="raw-output" rows="16" readonly style="width:100%;box-sizing:border-box;font:13px/1.4 monospace">No benchmark results yet.</textarea>
 <div id="layout-box"></div>
 <canvas id="canvas" width="640" height="220"></canvas>
 <script>
@@ -47,6 +47,31 @@ button{font:inherit;padding:10px 15px;cursor:pointer}pre{white-space:pre-wrap;ba
         for (i = 0; i < a.length; i++) sum = (sum + a[i]) % 1000003;
         return {ms:now() - t, checksum:sum};
     }
+    function objectBench() {
+        var t = now(), a = [], i, sum = 0, item;
+        for (i = 0; i < 30000; i++) {
+            a.push({id:i, score:(i * 7) % 997, active:(i % 3) === 0, label:"entry-" + (i % 101)});
+        }
+        for (i = 0; i < a.length; i++) {
+            item = a[i];
+            if (item.active) sum += item.score + item.id % 17;
+            if (item.label.length > 6) sum++;
+        }
+        return {ms:now() - t, checksum:sum};
+    }
+    function stringRegexBench() {
+        var t = now(), i, text, match, count = 0, sum = 0;
+        var pattern = /page-([0-9]{1,6})-([A-Z]{2,5})-resource/;
+        for (i = 0; i < 28000; i++) {
+            text = "page-" + ((i * 37) % 999983) + "-" + ((i % 2) ? "ALPHA" : "BETA") + "-resource";
+            match = pattern.exec(text);
+            if (match) {
+                count++;
+                sum = (sum + parseInt(match[1], 10) + match[2].length) % 1000003;
+            }
+        }
+        return {ms:now() - t, checksum:sum + count};
+    }
     function layoutBench() {
         var t = now(), i, pass, el, sum = 0;
         box.innerHTML = "";
@@ -67,7 +92,6 @@ button{font:inherit;padding:10px 15px;cursor:pointer}pre{white-space:pre-wrap;ba
     function canvasBench() {
         if (!ctx) return {ms:null, checksum:"canvas unavailable"};
         var t = now(), i, x, y, r;
-        // Start each measured round from the same canvas state.
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         for (i = 0; i < 2200; i++) {
             x = (i * 37) % 640;
@@ -78,7 +102,7 @@ button{font:inherit;padding:10px 15px;cursor:pointer}pre{white-space:pre-wrap;ba
             ctx.fillStyle = (i % 2) ? "#4779a9" : "#d58b39";
             ctx.fill();
         }
-        return {ms:now() - t, checksum:2200};
+        return {ms:now()-t, checksum:2200};
     }
     function median(values) {
         var copy = values.slice().sort(function (a,b) { return a-b; });
@@ -88,56 +112,65 @@ button{font:inherit;padding:10px 15px;cursor:pointer}pre{white-space:pre-wrap;ba
         button.disabled = true;
         state.textContent = "Running warm-up and five measured rounds…";
         window.setTimeout(function () {
-            var rounds = {javascript:[], arrays:[], layout:[], canvas:[]};
+            var rounds = {javascript:[], arrays:[], objects:[], stringsRegex:[], layout:[], canvas:[]};
             var notes = [];
-            var r, a, b, c, d;
-            jsBench(); arrayBench(); layoutBench(); canvasBench();
+            var r, a, b, c, d, e, f;
+            jsBench(); arrayBench(); objectBench(); stringRegexBench(); layoutBench(); canvasBench();
             for (r = 0; r < 5; r++) {
-                a = jsBench(); b = arrayBench(); c = layoutBench(); d = canvasBench();
+                a = jsBench(); b = arrayBench(); c = objectBench();
+                d = stringRegexBench(); e = layoutBench(); f = canvasBench();
                 rounds.javascript.push(a.ms);
                 rounds.arrays.push(b.ms);
-                rounds.layout.push(c.ms);
-                if (d.ms !== null) rounds.canvas.push(d.ms);
-                notes.push("Round " + (r + 1) + ": JS " + a.ms.toFixed(1) + " ms; array " +
-                    b.ms.toFixed(1) + " ms; DOM/layout " + c.ms.toFixed(1) + " ms; canvas " +
-                    (d.ms === null ? d.ms : d.ms.toFixed(1)) + " ms");
+                rounds.objects.push(c.ms);
+                rounds.stringsRegex.push(d.ms);
+                rounds.layout.push(e.ms);
+                if (f.ms !== null) rounds.canvas.push(f.ms);
+                notes.push("Round " + (r + 1) + ": JS " + a.ms.toFixed(1) +
+                    " ms; arrays " + b.ms.toFixed(1) + " ms; objects " + c.ms.toFixed(1) +
+                    " ms; strings/regex " + d.ms.toFixed(1) + " ms; DOM/layout " +
+                    e.ms.toFixed(1) + " ms; canvas " + (f.ms === null ? "unavailable" : f.ms.toFixed(1) + " ms"));
             }
             var medians = {
                 javascript: median(rounds.javascript),
                 arrays: median(rounds.arrays),
+                objects: median(rounds.objects),
+                stringsRegex: median(rounds.stringsRegex),
                 layout: median(rounds.layout),
                 canvas: rounds.canvas.length ? median(rounds.canvas) : null
             };
             var resultDate = new Date().toISOString();
             var lines = [
-                "Odyssey Browser Performance Bench v2",
+                "Odyssey Browser Performance Bench v3",
                 "User agent: " + navigator.userAgent,
                 "Date: " + resultDate,
                 "Screen: " + screen.width + "x" + screen.height,
+                "Hardware concurrency: " + (navigator.hardwareConcurrency || "not exposed"),
                 "",
                 "Median of five measured rounds (lower is better):",
                 "JavaScript numeric loop: " + medians.javascript.toFixed(1) + " ms",
                 "Array fill + scan: " + medians.arrays.toFixed(1) + " ms",
+                "Object creation + property reads: " + medians.objects.toFixed(1) + " ms",
+                "String generation + regex: " + medians.stringsRegex.toFixed(1) + " ms",
                 "DOM creation + forced layout: " + medians.layout.toFixed(1) + " ms",
                 "Canvas draw (2200 circles): " + (medians.canvas === null ? "unavailable" : medians.canvas.toFixed(1) + " ms"),
                 "",
                 "Individual rounds:",
                 notes.join("\n"),
                 "",
-                "Compare only against the same benchmark version and similar hardware. This is a smoke benchmark, not a browser speed score."
+                "This is a synthetic smoke benchmark, not a complete browser speed score. It does not measure networking, cold startup, media codecs, memory use, or security."
             ];
             out.textContent = lines.join("\n");
             rawOut.value = JSON.stringify({
-                benchmark: "odyssey-browser-performance",
-                version: 2,
-                date: resultDate,
-                userAgent: navigator.userAgent,
-                screen: {width: screen.width, height: screen.height},
-                hardwareConcurrency: navigator.hardwareConcurrency || null,
-                mediansMs: medians,
-                roundsMs: rounds
+                benchmark:"odyssey-browser-performance",
+                version:3,
+                date:resultDate,
+                userAgent:navigator.userAgent,
+                screen:{width:screen.width,height:screen.height},
+                hardwareConcurrency:navigator.hardwareConcurrency || null,
+                mediansMs:medians,
+                roundsMs:rounds
             }, null, 2);
-            state.textContent = "Finished. Copy/save both the summary and JSON when comparing builds.";
+            state.textContent = "Finished. Save the summary and JSON for each build profile.";
             button.disabled = false;
         }, 30);
     }
