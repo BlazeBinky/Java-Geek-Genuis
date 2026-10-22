@@ -280,8 +280,10 @@ code{background:#f1f4f8;padding:2px 5px;border-radius:4px}
         try {
             request = window.indexedDB.open(name, 1);
             request.onupgradeneeded = function () {
-                if (!request.result.objectStoreNames.contains("probe"))
-                    request.result.createObjectStore("probe");
+                // The database name includes a timestamp, so this is a fresh
+                // version-1 database. Avoid requiring DOMStringList.contains()
+                // just to exercise a simple object-store round trip.
+                request.result.createObjectStore("probe");
             };
             request.onerror = function () { complete(index, "FAIL", "Database open failed: " + String(request.error || "unknown error")); };
             request.onsuccess = function () {
