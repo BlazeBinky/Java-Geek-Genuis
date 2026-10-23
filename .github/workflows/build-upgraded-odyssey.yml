@@ -8,6 +8,7 @@ on:
     paths:
       - ".github/workflows/build-upgraded-odyssey.yml"
       - "scripts/apply_os4_modern_profile.py"
+      - "scripts/apply_os4_platform_compat.py"
 
 permissions:
   contents: read
@@ -44,6 +45,7 @@ jobs:
           cp os4-build-support/Source/cmake/AMIGAOS4.cmake upstream/Source/cmake/AMIGAOS4.cmake
           chmod +x upstream/cross-build/build_aos4
           python3 scripts/apply_os4_modern_profile.py upstream
+          python3 scripts/apply_os4_platform_compat.py upstream
 
       - name: Get OS4 PPC toolchain and Odyssey dependency libraries
         shell: bash
