@@ -8,6 +8,12 @@ on:
     paths:
       - ".github/workflows/odyssey-os4-build.yml"
       - "odyssey-os4/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/odyssey-os4-build.yml"
+      - "odyssey-os4/**"
 
 permissions:
   contents: read
