@@ -33,7 +33,7 @@ jobs:
             <ItemGroup><Compile Include="App.xaml.cs"><DependentUpon>App.xaml</DependentUpon></Compile><Compile Include="MainPage.xaml.cs"><DependentUpon>MainPage.xaml</DependentUpon></Compile></ItemGroup>
             <ItemGroup><ApplicationDefinition Include="App.xaml"><Generator>MSBuild:Compile</Generator></ApplicationDefinition><Page Include="MainPage.xaml"><Generator>MSBuild:Compile</Generator></Page></ItemGroup>
             <ItemGroup><Content Include="Assets\StoreLogo.png"/><Content Include="Assets\Square150x150Logo.png"/><Content Include="Assets\Square44x44Logo.png"/><Content Include="Assets\Wide310x150Logo.png"/><Content Include="Assets\SplashScreen.png"/><AppxManifest Include="Package.appxmanifest"/></ItemGroup>
-            <ItemGroup><PackageReference Include="Microsoft.NETCore.UniversalWindowsPlatform" Version="6.2.14" /><PackageReference Include="Microsoft.Windows.SDK.Contracts" Version="10.0.19041.1" /></ItemGroup>
+            <ItemGroup><Reference Include="Windows"><HintPath>__PONGO_WINDOWS_WINMD__</HintPath><IsWinMDFile>true</IsWinMDFile></Reference></ItemGroup><ItemGroup><PackageReference Include="Microsoft.NETCore.UniversalWindowsPlatform" Version="6.2.14" /></ItemGroup>
             <Import Project="$(MSBuildExtensionsPath)\Microsoft\WindowsXaml\v$(VisualStudioVersion)\Microsoft.Windows.UI.Xaml.CSharp.targets" />
           </Project>
           '@ | Set-Content (Join-Path $root 'PongoLumia.csproj') -Encoding utf8
@@ -105,6 +105,17 @@ jobs:
             <Capabilities><Capability Name="internetClient"/><Capability Name="privateNetworkClientServer"/><DeviceCapability Name="microphone"/></Capabilities>
           </Package>
           '@ | Set-Content (Join-Path $root 'Package.appxmanifest') -Encoding utf8
+          # Bind compilation to the exact Windows SDK union metadata version installed on this runner.
+          $unionRoot = Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'Windows Kits\10\UnionMetadata'
+          $sdk = Get-ChildItem $unionRoot -Directory -ErrorAction SilentlyContinue | Where-Object { Test-Path (Join-Path $_.FullName 'Windows.winmd') } | Sort-Object Name -Descending | Select-Object -First 1
+          if (-not $sdk) { throw "No Windows.winmd metadata found under $unionRoot" }
+          $winmd = Join-Path $sdk.FullName 'Windows.winmd'
+          $projPath = Join-Path $root 'PongoLumia.csproj'
+          $projText = Get-Content $projPath -Raw
+          $projText = $projText.Replace('10.0.19041.0</TargetPlatformVersion>', ($sdk.Name + '</TargetPlatformVersion>'))
+          $projText = $projText.Replace('__PONGO_WINDOWS_WINMD__', $winmd)
+          [IO.File]::WriteAllText($projPath, $projText, [Text.UTF8Encoding]::new($false))
+          Write-Host "Using UWP target SDK $($sdk.Name) and metadata $winmd"
           Add-Type -AssemblyName System.Drawing
           function Make-Logo([int]$size,[string]$path){
             $bmp=[System.Drawing.Bitmap]::new($size,$size);$g=[System.Drawing.Graphics]::FromImage($bmp);$g.SmoothingMode=[System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
