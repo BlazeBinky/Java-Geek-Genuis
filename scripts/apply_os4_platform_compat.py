@@ -137,7 +137,9 @@ def patch_fast_malloc(root: Path) -> None:
     path = root / "Source/WTF/wtf/FastMalloc.cpp"
     text = path.read_text(encoding="utf-8")
     if "#include <cstdlib>" not in text:
-        text = text.replace("#include <limits>\n", "#include <limits>\n#include <cstdlib>\n#include <stdint.h>\n", 1)
+        text = text.replace("#include <limits>\n", "#include <limits>\n#include <limits.h>\n#include <cstdlib>\n#include <stdint.h>\n", 1)
+    elif "#include <limits.h>" not in text:
+        text = text.replace("#include <limits>\n", "#include <limits>\n#include <limits.h>\n", 1)
     marker = "namespace WTF {\n\nbool isFastMallocEnabled()"
     helpers = r"""namespace WTF {
 
