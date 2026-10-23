@@ -1,0 +1,31 @@
+name: Test local LLM runtime for Lumia ARM
+on:
+  push:
+    paths:
+      - '.github/workflows/pongo-llama-arm32-test.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-llama-arm32:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
+      - name: Fetch llama.cpp
+        shell: pwsh
+        run: git clone --depth 1 https://github.com/ggml-org/llama.cpp.git llama.cpp
+      - name: Configure Windows Store ARM32
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cmake -S llama.cpp -B build-llama -G "Visual Studio 17 2022" -A ARM -DCMAKE_SYSTEM_NAME=WindowsStore -DCMAKE_SYSTEM_VERSION=10.0.19041.0 -DBUILD_SHARED_LIBS=OFF -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_CURL=OFF
+          if ($LASTEXITCODE -ne 0) { throw "llama.cpp ARM32 configure failed: $LASTEXITCODE" }
+      - name: Build static llama library for ARM32
+        timeout-minutes: 10
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cmake --build build-llama --config Release --target llama -- /m
+          if ($LASTEXITCODE -ne 0) { throw "llama.cpp ARM32 compile failed: $LASTEXITCODE" }
+          Get-ChildItem build-llama -Recurse -Filter "*llama*.lib" | Select-Object FullName,Length | Format-Table -AutoSize
