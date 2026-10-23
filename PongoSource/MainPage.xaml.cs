@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Runtime.InteropServices;
+using System.Threading;
+using Windows.Networking.BackgroundTransfer;
 using System.Threading.Tasks;
 using Windows.Media.SpeechRecognition;
 using Windows.Media.SpeechSynthesis;
@@ -16,6 +19,26 @@ namespace PongoLumia {
   public sealed partial class MainPage : Page {
     private bool busy;
     private bool codeReady;
+    private bool localModelLoaded;
+    private bool modelBusy;
+    private const string ModelFileName = "SmolLM2-135M-Instruct-Q4_K_M.gguf";
+    private const string ModelUrl = "https://huggingface.co/tensorblock/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf?download=true";
+
+    [DllImport("PongoLlmNative.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode, ExactSpelling = true)]
+    private static extern int PongoLlmLoad([MarshalAs(UnmanagedType.LPWStr)] string modelPath);
+
+    [DllImport("PongoLlmNative.dll", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    private static extern int PongoLlmIsLoaded();
+
+    [DllImport("PongoLlmNative.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode, ExactSpelling = true)]
+    private static extern int PongoLlmGenerate(
+      [MarshalAs(UnmanagedType.LPWStr)] string prompt,
+      [Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder output,
+      int outputCapacity,
+      int maxTokens);
+
+    [DllImport("PongoLlmNative.dll", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    private static extern void PongoLlmUnload();
     private string currentLanguage = "HTML / JavaScript";
     private readonly ApplicationDataContainer data = ApplicationData.Current.LocalSettings;
 
@@ -32,8 +55,8 @@ namespace PongoLumia {
       new KnowledgeItem("csharp programming windows app", "C# is a compiled language commonly used for Windows apps. Example:\r\n\r\nusing System;\r\nclass Program {\r\n  static void Main() { Console.WriteLine(\"Hello, Pongo!\"); }\r\n}\r\n\r\nCode Lab can edit and save C# code. Building an actual .appx requires the Windows SDK and build tools on a PC."),
       new KnowledgeItem("xaml interface layout controls uwp", "XAML describes a Windows app's UI. Example:\r\n\r\n<StackPanel Padding=\"20\">\r\n  <TextBlock Text=\"Hello, Pongo!\" FontSize=\"24\" />\r\n  <Button Content=\"Click me\" />\r\n</StackPanel>\r\n\r\nXAML is normally paired with C# event handlers in a UWP project."),
       new KnowledgeItem("appx package install package windows mobile", "An .appx is a Windows app package. A real UWP .appx contains compiled app files, a manifest, assets, and a signature. Pongo can generate starter project source while offline, but compiling and signing a real ARM .appx needs Windows SDK/MSBuild tooling on a PC."),
-      new KnowledgeItem("ai local offline chatbot model", "This is Pongo's tiny local brain: it matches words against an offline knowledge collection, uses built-in patterns, remembers notes, and can learn question-and-answer examples you teach it. It is not a transformer or a large neural language model, but it runs without network access or an API."),
-      new KnowledgeItem("transformer neural network machine learning", "A transformer is a neural-network architecture that uses attention to process sequences. Modern language models often use transformers, but their model weights and compute needs are far beyond this small Lumia app. Pongo instead uses a lightweight local retrieval engine and learned answers."),
+      new KnowledgeItem("ai local offline chatbot model", "Without the optional model installed, Pongo uses an offline word-matching helper, notes, maths, and saved lessons. You can download the small 135M-parameter GGUF model once, then load it for on-device language generation without an AI API."),
+      new KnowledgeItem("transformer neural network machine learning", "A transformer is a neural-network architecture that uses attention to process sequences. Pongo can run a quantized 135M-parameter transformer locally after its GGUF model is downloaded. It is much smaller and less capable than large cloud models, but replies are generated on-device."),
       new KnowledgeItem("minecraft redstone logic circuit computer", "Minecraft redstone is a game system for building digital logic and simple computers. Redstone torches, repeaters, comparators, and dust can form NOT, AND, OR, and memory circuits. A half adder adds two bits: SUM is XOR and CARRY is AND."),
       new KnowledgeItem("logic gates and or not xor digital", "Logic gates operate on true/false values or binary bits. AND is 1 only when both inputs are 1; OR is 1 when either input is 1; NOT flips a bit; XOR is 1 when the inputs differ. These gates are the basis of adders and processors."),
       new KnowledgeItem("electricity voltage current resistance resistor", "Voltage is electrical potential difference, current is the flow of charge, and resistance limits current. Ohm's law is V = I × R. Use a suitable resistor with an LED, and do not assume a circuit's voltage is safe just because the parts are small."),
@@ -48,14 +71,15 @@ namespace PongoLumia {
       Conversation.Text = data.Values.ContainsKey("ChatHistory")
         ? data.Values["ChatHistory"].ToString()
         : "PONGO • TINY LOCAL BRAIN\r\nNo AI API. No account. Works offline.\r\nTry: hello, 7 * 8, teach question => answer, note ..., show notes, or ask about Python, XAML, .appx, AI, electricity, or redstone.\r\n\r\n";
-      Status.Text = "Offline brain ready";
+      Status.Text = "Mini offline helper ready • optional local LLM";
       codeReady = false;
       LanguageBox.SelectedIndex = 0;
       currentLanguage = GetSelectedLanguage();
       CodeEditor.Text = TemplateFor(currentLanguage);
       CodeOutput.Text = "Offline preview and code output appear here.\r\n\r\nHTML / JavaScript can run locally. Python, C# and XAML are editable source snippets; choose Save Code or create a starter app project to build on a PC.";
-      CodeStatus.Text = "Code and chat work offline. Web search is optional.";
+      CodeStatus.Text = "Code and chat work offline. The full model is optional and runs locally after download.";
       codeReady = true;
+      RefreshModelButtonAsync();
     }
 
     private void ShowChat_Click(object sender, RoutedEventArgs e) {
@@ -94,10 +118,18 @@ namespace PongoLumia {
       Conversation.Text += "YOU\r\n" + question + "\r\n\r\n";
       busy = true; Status.Text = "Pongo is thinking locally…";
       try {
-        string answer = await LocalBrainReplyAsync(question);
-        Conversation.Text += "PONGO • OFFLINE\r\n" + answer + "\r\n\r\n";
+        bool useLocalModel = localModelLoaded && !IsLocalUtilityCommand(question);
+        string answer;
+        if (useLocalModel) {
+          Status.Text = "Generating with local language model…";
+          answer = await Task.Run(() => GenerateLocalLlmReply(question));
+        } else {
+          answer = await LocalBrainReplyAsync(question);
+        }
+        Conversation.Text += (useLocalModel ? "PONGO • LOCAL LLM\r\n" : "PONGO • OFFLINE HELPER\r\n") + answer + "\r\n\r\n";
         SaveChat();
-        Status.Text = "Ready • Offline • No API";
+        Status.Text = useLocalModel ? "Ready • model inference on phone • no AI API" :
+          (localModelLoaded ? "Ready • local model installed; utility handled offline" : "Ready • mini offline helper • no API");
         try {
           string spoken = answer.Length > 240 ? answer.Substring(0, 240) : answer;
           using (var synthesizer = new SpeechSynthesizer()) {
@@ -105,11 +137,91 @@ namespace PongoLumia {
             Speech.SetSource(stream, stream.ContentType); Speech.Play();
           }
         } catch { }
-      } catch {
-        Status.Text = "Offline reply failed. Try a shorter question.";
-        Conversation.Text += "PONGO\r\nEven my tiny brain has limits. Try a shorter question or use Code Lab.\r\n\r\n";
+      } catch (Exception ex) {
+        Status.Text = "Local reply failed: " + ex.Message;
+        Conversation.Text += "PONGO\r\nI couldn't complete that response. If the local model is loaded, try reloading it or a shorter question.\r\n\r\n";
         SaveChat();
       } finally { busy = false; }
+    }
+
+    private bool IsLocalUtilityCommand(string question) {
+      string l = (question ?? "").ToLowerInvariant().Trim();
+      if (l.StartsWith("teach ") || l.StartsWith("note ") || l.StartsWith("remember this ") ||
+          l.StartsWith("search ") || l.StartsWith("google ") || l.StartsWith("look up ") || l.StartsWith("open ")) return true;
+      if (l == "time" || l.Contains("what time") || l == "current time" ||
+          l == "date" || l.Contains("what date") || l.Contains("what day is it") || l == "today" ||
+          l.Contains("show my notes") || l == "notes" || l == "my notes" || l == "show notes") return true;
+      return Regex.IsMatch(l, @"(-?[0-9]+(?:\\.[0-9]+)?)\\s*([+\\-*/x])\\s*(-?[0-9]+(?:\\.[0-9]+)?)");
+    }
+
+    private string GenerateLocalLlmReply(string question) {
+      string system = "You are Pongo, a witty, slightly self-important penguin assistant. Be helpful, clear, safe, and honest. Help explain concepts and write code. Never claim you ran code or accessed the internet. Keep answers concise but useful. If uncertain, say so.";
+      string prompt = "<|im_start|>system\\n" + system + "<|im_end|>\\n" +
+        "<|im_start|>user\\n" + question + "<|im_end|>\\n<|im_start|>assistant\\n";
+      var output = new StringBuilder(8192);
+      int count = PongoLlmGenerate(prompt, output, output.Capacity, 112);
+      if (count < 0) throw new InvalidOperationException("Model inference returned error " + count + ".");
+      string answer = output.ToString().Trim();
+      int stop = answer.IndexOf("<|im_end|>", StringComparison.Ordinal);
+      if (stop >= 0) answer = answer.Substring(0, stop).Trim();
+      stop = answer.IndexOf("<|endoftext|>", StringComparison.Ordinal);
+      if (stop >= 0) answer = answer.Substring(0, stop).Trim();
+      if (String.IsNullOrWhiteSpace(answer)) throw new InvalidOperationException("The model produced an empty reply.");
+      return answer;
+    }
+
+    private async void LocalModel_Click(object sender, RoutedEventArgs e) {
+      if (modelBusy || localModelLoaded) return;
+      modelBusy = true;
+      LocalModelButton.IsEnabled = false;
+      try {
+        StorageFile modelFile = null;
+        try { modelFile = await ApplicationData.Current.LocalFolder.GetFileAsync(ModelFileName); }
+        catch {
+          Status.Text = "Downloading the 105 MB model. Keep Pongo open and connected to Wi-Fi…";
+          StorageFile temp = await ApplicationData.Current.LocalFolder.CreateFileAsync("PongoModel.download", CreationCollisionOption.ReplaceExisting);
+          var downloader = new BackgroundDownloader();
+          var operation = downloader.CreateDownload(new Uri(ModelUrl), temp);
+          var progress = new Progress<DownloadOperation>(op => {
+            ulong total = op.Progress.TotalBytesToReceive;
+            string message = total > 0
+              ? "Downloading local AI model: " + Math.Min(100, (int)(100.0 * op.Progress.BytesReceived / total)).ToString() + "%"
+              : "Downloading local AI model…";
+            var ignored = Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () => { Status.Text = message; });
+          });
+          await operation.StartAsync().AsTask(CancellationToken.None, progress);
+          await temp.RenameAsync(ModelFileName, NameCollisionOption.ReplaceExisting);
+          modelFile = await ApplicationData.Current.LocalFolder.GetFileAsync(ModelFileName);
+        }
+        Status.Text = "Loading local model. This can take a while on the Lumia…";
+        int result = await Task.Run(() => PongoLlmLoad(modelFile.Path));
+        if (result != 1 || PongoLlmIsLoaded() != 1)
+          throw new InvalidOperationException("The ARM inference engine couldn't load the GGUF model (code " + result + ").");
+        localModelLoaded = true;
+        LocalModelButton.Content = "Local AI loaded ✓";
+        Status.Text = "Real local LLM ready • on-device inference • no API";
+        Conversation.Text += "PONGO • SYSTEM\\r\\nThe 135M-parameter language model is loaded. New questions can now be generated locally on this phone.\\r\\n\\r\\n";
+        SaveChat();
+      } catch (DllNotFoundException) {
+        Status.Text = "This app package is missing the native ARM32 inference engine. Install the updated build.";
+        LocalModelButton.Content = "Retry local AI setup";
+      } catch (Exception ex) {
+        Status.Text = "Local model setup failed: " + ex.Message;
+        LocalModelButton.Content = "Retry local AI setup";
+      } finally {
+        modelBusy = false;
+        LocalModelButton.IsEnabled = true;
+      }
+    }
+
+    private async Task RefreshModelButtonAsync() {
+      try {
+        await ApplicationData.Current.LocalFolder.GetFileAsync(ModelFileName);
+        LocalModelButton.Content = "Load downloaded local AI model";
+        Status.Text = "Model file is already stored on this phone. Tap to load; inference stays offline.";
+      } catch {
+        LocalModelButton.Content = "Get local AI model (~105 MB)";
+      }
     }
 
     private async Task<string> LocalBrainReplyAsync(string question) {
@@ -156,9 +268,9 @@ namespace PongoLumia {
       if (l == "hi" || l == "hello" || l == "hey" || l == "yo" || l.Contains("good morning"))
         return "Hello. Pongo here: penguin, offline assistant, and clearly the most qualified creature in this room. What's up?";
       if (l.Contains("who are you") || l.Contains("your name") || l == "what are you")
-        return "I'm Pongo, the slightly self-important penguin. My tiny local brain uses offline word matching, built-in knowledge, arithmetic, notes, and lessons you teach me. No AI service, no token, no API.";
+        return "I'm Pongo, the slightly self-important penguin. Without the extra model I use a tiny offline helper. After you download the 135M-parameter local model, I can generate language on this phone too. No AI API or account is needed.";
       if (l == "help" || l.Contains("what can you do") || l.Contains("how do i use you"))
-        return "I work offline. Try: 'what is a half adder', 'explain Python', '7 * 8', 'note ...', 'show my notes', or 'teach what is redstone => ...'. Tap Code Lab to edit HTML/JavaScript, Python, C#, and XAML; preview HTML/JS offline or export a starter .appx project for building on a PC.";
+        return "Tap 'Get local AI model' to download a 135M-parameter transformer (~105 MB) for on-device generation. After setup it works offline without an API. You can also use '7 * 8', 'note ...', 'show my notes', or 'teach what is redstone => ...'. Code Lab edits HTML/JavaScript, Python, C#, and XAML.";
       if (l.Contains("how are you")) return "Excellent. My feathers are pristine and my tiny brain is entirely on-device. How are you?";
       if (l.Contains("thank")) return "You're welcome. Compliments are also welcome, though I prefer accurate ones.";
 
@@ -184,7 +296,7 @@ namespace PongoLumia {
         return "Code Lab works offline. It edits HTML/JavaScript, Python, C#, and XAML. HTML/JS can run in the embedded preview. 'Create a starter .appx project' exports source files and assets to a chosen folder. This Lumia app cannot compile/sign a real .appx by itself; that needs Windows SDK/MSBuild on a PC.";
       string knowledge = LocalKnowledgeReply(l);
       if (!String.IsNullOrEmpty(knowledge)) return knowledge;
-      return "I couldn't find a strong match in my small offline knowledge collection yet. You can teach me with: teach your question => its answer. Or open Code Lab and try a local coding example. The separate Web search button is optional and needs internet; I never call an AI API.";
+      return "I couldn't find a strong match in the mini offline helper. Install the local language model using the button above for generated answers and code. Or teach me with: teach your question => its answer. Web search is a separate optional browser action; the local model itself uses no AI API.";
     }
 
     private string LocalKnowledgeReply(string question) {
