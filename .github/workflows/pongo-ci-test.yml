@@ -1,0 +1,15 @@
+name: Pongo Runner Diagnostic
+on:
+  push:
+    paths:
+      - '.github/workflows/pongo-ci-test.yml'
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - name: Confirm hosted runner
+        shell: pwsh
+        run: |
+          Write-Host "Pongo diagnostic runner started"
+          Write-Host "This check does not compile or package the app."
