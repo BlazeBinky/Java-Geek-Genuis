@@ -11,6 +11,57 @@ jobs:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
+      - name: Fetch llama.cpp for local ARM32 inference
+        shell: pwsh
+        run: git clone --depth 1 https://github.com/ggml-org/llama.cpp.git llama.cpp
+      - name: Adapt llama.cpp memory APIs for Windows 10 Mobile UWP
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $path = 'llama.cpp/src/llama-mmap.cpp'
+          $source = Get-Content $path -Raw
+          $source = $source.Replace('CreateFileMappingA(hFile, NULL, PAGE_READONLY, 0, 0, NULL)', 'CreateFileMappingFromApp(hFile, NULL, PAGE_READONLY, 0, NULL)')
+          $source = $source.Replace('MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0)', 'MapViewOfFileFromApp(hMapping, FILE_MAP_READ, 0, 0)')
+          $source = $source.Replace('#if _WIN32_WINNT >= 0x602', '#if _WIN32_WINNT >= 0x602 && WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)')
+          $source = $source.Replace('(defined(_WIN32) && _WIN32_WINNT >= 0x602)', '(defined(_WIN32) && _WIN32_WINNT >= 0x602 && WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP))')
+          $mlockStart = $source.IndexOf('// llama_mlock')
+          if ($mlockStart -lt 0) { throw 'Could not find llama_mlock implementation.' }
+          $before = $source.Substring(0, $mlockStart)
+          $after = $source.Substring($mlockStart)
+          $branch = $after.IndexOf('#elif defined(_WIN32)')
+          if ($branch -lt 0) { throw 'Could not find Windows mlock implementation.' }
+          $after = $after.Substring(0, $branch) + $after.Substring($branch).Replace('#elif defined(_WIN32)', '#elif defined(_WIN32) && WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)')
+          [IO.File]::WriteAllText((Resolve-Path $path), $before + $after, [Text.UTF8Encoding]::new($false))
+          Write-Host 'UWP-safe file mapping enabled; desktop-only prefetch and locking disabled.'
+      - name: Add Pongo native inference DLL target
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          @'
+          add_library(PongoLlmNative SHARED "${CMAKE_SOURCE_DIR}/../PongoSource/PongoLlmNative.cpp")
+          target_link_libraries(PongoLlmNative PRIVATE llama)
+          target_include_directories(PongoLlmNative PRIVATE "${CMAKE_SOURCE_DIR}/include")
+          set_target_properties(PongoLlmNative PROPERTIES OUTPUT_NAME PongoLlmNative)
+          '@ | Add-Content 'llama.cpp/CMakeLists.txt' -Encoding utf8
+      - name: Configure llama.cpp for Windows Store ARM32
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cmake -S llama.cpp -B build-llama -G "Visual Studio 17 2022" -A "ARM,version=10.0.22621.0" -DCMAKE_SYSTEM_NAME=WindowsStore '-DCMAKE_SYSTEM_VERSION=10.0.22621.0' '-DCMAKE_SYSTEM_PROCESSOR=ARM' '-DCMAKE_CXX_FLAGS=/D_WIN32_WINNT=0x0602' -DBUILD_SHARED_LIBS=OFF -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DGGML_BACKEND_DL=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_CURL=OFF
+          if ($LASTEXITCODE -ne 0) { throw "llama.cpp ARM32 configure failed: $LASTEXITCODE" }
+      - name: Build Pongo native inference engine (ARM32)
+        timeout-minutes: 12
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cmake --build build-llama --config Release --target PongoLlmNative -- /m
+          if ($LASTEXITCODE -ne 0) { throw "Pongo ARM32 native inference build failed: $LASTEXITCODE" }
+          $dll = Get-ChildItem build-llama -Recurse -Filter 'PongoLlmNative.dll' | Select-Object -First 1
+          if (-not $dll) { throw 'PongoLlmNative.dll was not produced.' }
+          $appRoot = Join-Path $PWD 'PongoLumia'
+          New-Item -ItemType Directory -Force $appRoot | Out-Null
+          Copy-Item $dll.FullName (Join-Path $appRoot 'PongoLlmNative.dll') -Force
+          Write-Host "Packaged native engine: $($dll.FullName) ($((Get-Item $dll.FullName).Length) bytes)"
       - uses: microsoft/setup-msbuild@v2
       - uses: actions/setup-python@v5
         with:
@@ -379,7 +430,7 @@ jobs:
           @'
           <?xml version="1.0" encoding="utf-8"?>
           <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" IgnorableNamespaces="uap mp">
-            <Identity Name="BlazeBinky.PongoLumia" Publisher="CN=BlazeBinky" Version="1.2.0.0"/>
+            <Identity Name="BlazeBinky.PongoLumia" Publisher="CN=BlazeBinky" Version="1.3.0.0"/>
             <mp:PhoneIdentity PhoneProductId="5e0b48db-28bd-4e21-9db5-30b5d071a2b1" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
             <Properties><DisplayName>Pongo</DisplayName><PublisherDisplayName>BlazeBinky</PublisherDisplayName><Logo>Assets\StoreLogo.png</Logo></Properties>
             <Dependencies><TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.14393.0" MaxVersionTested="10.0.15063.0"/></Dependencies>
