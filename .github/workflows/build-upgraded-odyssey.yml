@@ -67,8 +67,9 @@ jobs:
         run: |
           set -euo pipefail
           HOST_JSON_PP="$(perl -MJSON::PP -e 'print $INC{"JSON/PP.pm"}')"
-          mkdir -p "$GITHUB_WORKSPACE/host-perl-lib/JSON"
-          cp "$HOST_JSON_PP" "$GITHUB_WORKSPACE/host-perl-lib/JSON/PP.pm"
+          HOST_JSON_DIR="$(dirname "$HOST_JSON_PP")"
+          mkdir -p "$GITHUB_WORKSPACE/host-perl-lib"
+          cp -a "$HOST_JSON_DIR" "$GITHUB_WORKSPACE/host-perl-lib/JSON"
           docker run --rm \
             --volume "$GITHUB_WORKSPACE/upstream:/workdir" \
             --volume "$GITHUB_WORKSPACE/host-perl-lib:/host-perl-lib:ro" \
