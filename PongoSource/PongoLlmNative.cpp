@@ -131,22 +131,41 @@ extern "C" __declspec(dllexport) int __cdecl PongoLlmGenerate(
     }
     if (tokens.empty()) return -5;
 
+    // The UWP context is configured for a maximum batch of 64 tokens.
+    // The full system + user prompt is often longer, so evaluate it in chunks.
+    // Only the final prompt token needs logits for the first generated token.
     llama_memory_clear(llama_get_memory(g_context), true);
-    llama_batch promptBatch = llama_batch_init(static_cast<int32_t>(tokens.size()), 0, 1);
-    if (!promptBatch.token || !promptBatch.pos || !promptBatch.n_seq_id || !promptBatch.seq_id || !promptBatch.logits) {
+    const int32_t batchLimit = 64;
+    int32_t decodeStatus = 0;
+    for (int32_t offset = 0; offset < static_cast<int32_t>(tokens.size()); offset += batchLimit) {
+        const int32_t count = (std::min)(batchLimit,
+            static_cast<int32_t>(tokens.size()) - offset);
+        llama_batch promptBatch = llama_batch_init(count, 0, 1);
+        if (!promptBatch.token || !promptBatch.pos || !promptBatch.n_seq_id ||
+            !promptBatch.seq_id || !promptBatch.logits) {
+            llama_batch_free(promptBatch);
+            return -6;
+        }
+
+        bool batchOkay = true;
+        for (int32_t j = 0; j < count; ++j) {
+            const int32_t tokenIndex = offset + j;
+            const bool wantLogits = tokenIndex == static_cast<int32_t>(tokens.size()) - 1;
+            if (!FillBatchToken(promptBatch, j, tokens[static_cast<size_t>(tokenIndex)],
+                                tokenIndex, wantLogits)) {
+                batchOkay = false;
+                break;
+            }
+        }
+
+        decodeStatus = batchOkay ? llama_decode(g_context, promptBatch) : -1;
         llama_batch_free(promptBatch);
-        return -6;
-    }
-    bool batchOkay = true;
-    for (int i = 0; i < static_cast<int>(tokens.size()); ++i) {
-        if (!FillBatchToken(promptBatch, i, tokens[static_cast<size_t>(i)], i, i == static_cast<int>(tokens.size()) - 1)) {
-            batchOkay = false;
-            break;
+        if (decodeStatus != 0) {
+            // Keep the public error code stable for the app; this means the
+            // native runtime rejected a prompt-prefill chunk.
+            return -7;
         }
     }
-    int32_t decodeStatus = batchOkay ? llama_decode(g_context, promptBatch) : -1;
-    llama_batch_free(promptBatch);
-    if (decodeStatus != 0) return -7;
 
     llama_sampler_chain_params samplerParams = llama_sampler_chain_default_params();
     llama_sampler* sampler = llama_sampler_chain_init(samplerParams);
