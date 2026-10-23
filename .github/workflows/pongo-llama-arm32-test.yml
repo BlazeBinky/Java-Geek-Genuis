@@ -32,6 +32,8 @@ jobs:
           $source = Get-Content $path -Raw
           $source = $source.Replace('CreateFileMappingA(hFile, NULL, PAGE_READONLY, 0, 0, NULL)', 'CreateFileMappingFromApp(hFile, NULL, PAGE_READONLY, 0, NULL)')
           $source = $source.Replace('MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0)', 'MapViewOfFileFromApp(hMapping, FILE_MAP_READ, 0, 0)')
+          $source = $source.Replace('#if _WIN32_WINNT >= 0x602', '#if _WIN32_WINNT >= 0x602 && WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)')
+          $source = $source.Replace('(defined(_WIN32) && _WIN32_WINNT >= 0x602)', '(defined(_WIN32) && _WIN32_WINNT >= 0x602 && WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP))')
           $mlockStart = $source.IndexOf('// llama_mlock')
           if ($mlockStart -lt 0) { throw 'Could not find llama_mlock implementation.' }
           $before = $source.Substring(0, $mlockStart)
@@ -47,7 +49,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          cmake -S llama.cpp -B build-llama -G "Visual Studio 17 2022" -A "ARM,version=10.0.22621.0" -DCMAKE_SYSTEM_NAME=WindowsStore '-DCMAKE_SYSTEM_VERSION=10.0.22621.0' '-DCMAKE_SYSTEM_PROCESSOR=ARM' '-DCMAKE_CXX_FLAGS=/D_WIN32_WINNT=0x0601' -DBUILD_SHARED_LIBS=OFF -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DGGML_BACKEND_DL=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_CURL=OFF
+          cmake -S llama.cpp -B build-llama -G "Visual Studio 17 2022" -A "ARM,version=10.0.22621.0" -DCMAKE_SYSTEM_NAME=WindowsStore '-DCMAKE_SYSTEM_VERSION=10.0.22621.0' '-DCMAKE_SYSTEM_PROCESSOR=ARM' '-DCMAKE_CXX_FLAGS=/D_WIN32_WINNT=0x0602' -DBUILD_SHARED_LIBS=OFF -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DGGML_BACKEND_DL=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_CURL=OFF
           if ($LASTEXITCODE -ne 0) { throw "llama.cpp ARM32 configure failed: $LASTEXITCODE" }
       - name: Add local Pongo inference DLL target
         shell: pwsh
