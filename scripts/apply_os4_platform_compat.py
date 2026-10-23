@@ -72,6 +72,38 @@ def patch_build_script(path: Path) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+
+
+def patch_siginfo_compat(root: Path) -> None:
+    header = root / "Source/WTF/wtf/Threading.h"
+    implementation = root / "Source/WTF/wtf/posix/ThreadingPOSIX.cpp"
+    header_text = header.read_text(encoding="utf-8")
+    impl_text = implementation.read_text(encoding="utf-8")
+
+    header_old = "static void signalHandlerSuspendResume(int, siginfo_t*, void* ucontext);"
+    header_new = "static void signalHandlerSuspendResume(int, void*, void* ucontext);"
+    impl_old = "void Thread::signalHandlerSuspendResume(int, siginfo_t*, void* ucontext)"
+    impl_new = "void Thread::signalHandlerSuspendResume(int, void*, void* ucontext)"
+
+    if header_old in header_text:
+        header_text = header_text.replace(header_old, header_new, 1)
+    elif header_new not in header_text:
+        raise ValueError("unexpected suspend/resume handler declaration")
+    if impl_old in impl_text:
+        impl_text = impl_text.replace(impl_old, impl_new, 1)
+    elif impl_new not in impl_text:
+        raise ValueError("unexpected suspend/resume handler implementation")
+    assignment_old = "action.sa_sigaction = &signalHandlerSuspendResume;"
+    assignment_new = "action.sa_sigaction = reinterpret_cast<decltype(action.sa_sigaction)>(&signalHandlerSuspendResume);"
+    if assignment_old in impl_text:
+        impl_text = impl_text.replace(assignment_old, assignment_new, 1)
+    elif assignment_new not in impl_text:
+        raise ValueError("unexpected POSIX signal callback assignment")
+
+    header.write_text(header_text, encoding="utf-8")
+    implementation.write_text(impl_text, encoding="utf-8")
+
+
 def main() -> int:
     if len(sys.argv) != 2:
         print(f"Usage: {Path(sys.argv[0]).name} UPSTREAM_SOURCE_DIR", file=sys.stderr)
@@ -80,12 +112,15 @@ def main() -> int:
     toolchain = root / "Source/cmake/AMIGAOS4.cmake"
     registers = root / "Source/WTF/wtf/PlatformRegisters.h"
     build_script = root / "cross-build/build_aos4"
+    threading_header = root / "Source/WTF/wtf/Threading.h"
+    threading_impl = root / "Source/WTF/wtf/posix/ThreadingPOSIX.cpp"
     try:
-        if not toolchain.is_file() or not registers.is_file() or not build_script.is_file():
-            raise FileNotFoundError("missing OS4 toolchain, build script or PlatformRegisters.h")
+        if not toolchain.is_file() or not registers.is_file() or not build_script.is_file() or not threading_header.is_file() or not threading_impl.is_file():
+            raise FileNotFoundError("missing OS4 toolchain, build script, platform headers or POSIX threading implementation")
         patch_toolchain(toolchain)
         patch_registers(registers)
         patch_build_script(build_script)
+        patch_siginfo_compat(root)
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
