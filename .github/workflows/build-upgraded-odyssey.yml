@@ -61,11 +61,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          HOST_JSON_PP="$(perl -MJSON::PP -e 'print $INC{"JSON/PP.pm"}')"
+          HOST_PERL_LIB="$(dirname "$(dirname "$HOST_JSON_PP")")"
+          test -f "$HOST_PERL_LIB/JSON/PP.pm"
           docker run --rm \
             --volume "$GITHUB_WORKSPACE/upstream:/workdir" \
+            --volume "$HOST_PERL_LIB:/host-perl-stdlib:ro" \
+            --env PERL5LIB=/host-perl-stdlib \
             --workdir /workdir \
             "$TOOLCHAIN_IMAGE" \
-            bash -lc 'set -euo pipefail; if ! perl -MJSON::PP -e "1" >/dev/null 2>&1; then sed -i "s#https://#http://#g" /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null || true; apt-get update; apt-get install --yes perl-modules-5.22 libjson-pp-perl; fi; perl -MJSON::PP -e "1"; cd cross-build; ./build_aos4; make -j2'
+            bash -lc 'set -euo pipefail; perl -MJSON::PP -e "1"; cd cross-build; ./build_aos4; make -j2'
 
       - name: Verify the compiled binary is native PowerPC
         shell: bash
