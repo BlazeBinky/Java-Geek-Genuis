@@ -65,7 +65,7 @@ jobs:
             --volume "$GITHUB_WORKSPACE/upstream:/workdir" \
             --workdir /workdir \
             "$TOOLCHAIN_IMAGE" \
-            bash -lc 'set -euo pipefail; cd cross-build; ./build_aos4; make -j2'
+            bash -lc 'set -euo pipefail; if ! perl -MJSON::PP -e "1" >/dev/null 2>&1; then apt-get update; apt-get install --yes perl-modules-5.22 libjson-pp-perl; fi; perl -MJSON::PP -e "1"; cd cross-build; ./build_aos4; make -j2'
 
       - name: Verify the compiled binary is native PowerPC
         shell: bash
