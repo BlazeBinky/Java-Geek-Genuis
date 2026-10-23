@@ -372,11 +372,14 @@ jobs:
             }
           }
           '@ | Set-Content (Join-Path $root 'MainPage.xaml.cs') -Encoding utf8
+          # Replace the bootstrap UI with the checked-in offline assistant and code editor.
+          Copy-Item (Join-Path $PWD 'PongoSource\MainPage.xaml') (Join-Path $root 'MainPage.xaml') -Force
+          Copy-Item (Join-Path $PWD 'PongoSource\MainPage.xaml.cs') (Join-Path $root 'MainPage.xaml.cs') -Force
 
           @'
           <?xml version="1.0" encoding="utf-8"?>
           <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" IgnorableNamespaces="uap mp">
-            <Identity Name="BlazeBinky.PongoLumia" Publisher="CN=BlazeBinky" Version="1.1.0.0"/>
+            <Identity Name="BlazeBinky.PongoLumia" Publisher="CN=BlazeBinky" Version="1.2.0.0"/>
             <mp:PhoneIdentity PhoneProductId="5e0b48db-28bd-4e21-9db5-30b5d071a2b1" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
             <Properties><DisplayName>Pongo</DisplayName><PublisherDisplayName>BlazeBinky</PublisherDisplayName><Logo>Assets\StoreLogo.png</Logo></Properties>
             <Dependencies><TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.14393.0" MaxVersionTested="10.0.15063.0"/></Dependencies>
@@ -517,9 +520,9 @@ jobs:
           
           Install with a Windows 10 Mobile deployment tool on a developer-unlocked compatible phone. If prompted, trust the included certificate on your own device. This is a test-signed sideload package, not a Store-signed release.
           
-          Features: chat-style interface, offline mini-chat for common commands and simple maths, saved notes and chat history, voice dictation, spoken replies, website shortcuts, and live browser search. Optional Hugging Face hosted chat supports open-ended questions and code when configured in AI Settings.
+          Features: a fully offline mini local brain using word matching and saved lessons, chat history and notes stored locally, simple maths, voice dictation and spoken replies, Code Lab for HTML/JavaScript, Python, C# and XAML, an offline HTML/JS preview, source-file saving, starter UWP project export, and optional separate browser search.
           
-          AI note: the built-in offline mini-chat runs on the phone; full Transformers/PyTorch weights are not bundled and do not run natively in this legacy Windows 10 Mobile app. The optional Hugging Face mode sends prompts to Hugging Face Inference Providers over the internet and needs a token with Inference Providers permission; availability/credits depend on your HF account and selected provider. The token is stored in Windows Credential Locker. Use 'search ...' for live web lookup in the browser. This is a separate app; it cannot replace protected Cortana or provide an always-on wake word. Test on the actual Lumia. Install ARM dependencies first; do not install x86, x64, or ARM64 dependencies on a Lumia 950.
+          Offline note: all chatbot matching, built-in knowledge, lessons, notes, and HTML/JavaScript preview work without an AI API or internet. This tiny retrieval brain is not a transformer or large neural model. 'Search' deliberately opens the browser and needs internet; it is separate from the AI. Code Lab can export a starter UWP project with your source snippet. A real .appx still needs Windows SDK/MSBuild tooling on a Windows PC; this phone app does not compile/sign .appx packages itself. This is a separate app; it cannot replace protected Cortana or provide an always-on wake word. Test on the actual Lumia. Install ARM dependencies first; do not install x86, x64, or ARM64 dependencies on a Lumia 950.
           '@ | Set-Content out\INSTALL.txt -Encoding utf8
           Compress-Archive -Path out\* -DestinationPath Pongo-Lumia-ARM-Install.zip -Force
       - uses: actions/upload-artifact@v4
