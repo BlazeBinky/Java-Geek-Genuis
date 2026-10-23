@@ -3,15 +3,16 @@
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
     <Grid Padding="9,7">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="68"/><ColumnDefinition Width="82"/></Grid.ColumnDefinitions>
-      <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Image Width="38" Height="38" Source="Assets/Square150x150Logo.png" Margin="0,0,8,0"/><StackPanel VerticalAlignment="Center"><TextBlock Text="PONGO" Foreground="White" FontSize="21" FontWeight="SemiBold"/><TextBlock Text="Offline penguin AI" Foreground="#FF9DB1D1" FontSize="11"/></StackPanel></StackPanel>
+      <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Image Width="38" Height="38" Source="Assets/Square150x150Logo.png" Margin="0,0,8,0"/><StackPanel VerticalAlignment="Center"><TextBlock Text="PONGO" Foreground="White" FontSize="21" FontWeight="SemiBold"/><TextBlock Text="Local AI • offline after setup" Foreground="#FF9DB1D1" FontSize="11"/></StackPanel></StackPanel>
       <Button Grid.Column="1" Content="Chat" Click="ShowChat_Click" Margin="2,0" VerticalAlignment="Center"/>
       <Button Grid.Column="2" Content="Code Lab" Click="ShowCode_Click" Margin="2,0" VerticalAlignment="Center"/>
     </Grid>
     <Grid Grid.Row="1" x:Name="ChatPanel" Margin="10,0">
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
       <StackPanel Grid.Row="0" Margin="2,3,2,8">
-        <TextBlock Text="Your tiny local brain. No AI API. No account. Works offline." Foreground="#FFBACBE2" FontSize="13" TextWrapping="Wrap"/>
-        <TextBlock Text="Ask a question, try a coding topic, or teach Pongo a fact." Foreground="#FF6EBBFF" FontSize="12" TextWrapping="Wrap" Margin="0,3,0,0"/>
+        <TextBlock Text="Download a real 135M-parameter language model. Once installed, replies are generated on this phone with no AI API." Foreground="#FFBACBE2" FontSize="13" TextWrapping="Wrap"/>
+        <TextBlock Text="First setup needs Wi-Fi and about 105 MB of storage. You can still use the tiny offline helper without it." Foreground="#FF6EBBFF" FontSize="12" TextWrapping="Wrap" Margin="0,3,0,5"/>
+        <Button x:Name="LocalModelButton" Content="Get local AI model (~105 MB)" Click="LocalModel_Click" HorizontalAlignment="Stretch" Margin="0,0,0,2"/>
       </StackPanel>
       <TextBox x:Name="Conversation" Grid.Row="1" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="180" Background="#FF11192B" Foreground="#FFE7F1FF" FontSize="15" BorderThickness="0" Padding="12" IsSpellCheckEnabled="False" />
       <StackPanel Grid.Row="2" Margin="0,7,0,5">
