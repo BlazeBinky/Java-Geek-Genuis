@@ -107,7 +107,7 @@ jobs:
           '@ | Set-Content (Join-Path $root 'Package.appxmanifest') -Encoding utf8
           # Bind compilation to the exact Windows SDK union metadata version installed on this runner.
           $unionRoot = Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'Windows Kits\10\UnionMetadata'
-          $sdk = Get-ChildItem $unionRoot -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'Facade' -and $_.Name.Contains('.') -and (Test-Path (Join-Path $_.FullName 'Windows.winmd')) } | Sort-Object Name -Descending | Select-Object -First 1
+          $sdk = Get-ChildItem $unionRoot -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'Facade' -and $_.Name.Contains('.') -and ([version]$_.Name -le [version]'10.0.22621.0') -and (Test-Path (Join-Path $_.FullName 'Windows.winmd')) } | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
           if (-not $sdk) { throw "No Windows.winmd metadata found under $unionRoot" }
           $winmd = Join-Path $sdk.FullName 'Windows.winmd'
           $projPath = Join-Path $root 'PongoLumia.csproj'
