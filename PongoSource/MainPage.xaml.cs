@@ -70,7 +70,7 @@ namespace PongoLumia {
       InitializeComponent();
       Conversation.Text = data.Values.ContainsKey("ChatHistory")
         ? data.Values["ChatHistory"].ToString()
-        : "PONGO • TINY LOCAL BRAIN\r\nNo AI API. No account. Works offline.\r\nTry: hello, 7 * 8, teach question => answer, note ..., show notes, or ask about Python, XAML, .appx, AI, electricity, or redstone.\r\n\r\n";
+        : "PONGO • ON-DEVICE LANGUAGE MODEL\r\nDownload the optional ~105 MB model once using the button above; it then generates replies on this phone without an AI API. The mini helper works offline even before that.\r\nTry: hello, 7 * 8, teach question => answer, note ..., show notes, or ask about Python, XAML, .appx, AI, electricity, or redstone.\r\n\r\n";
       Status.Text = "Mini offline helper ready • optional local LLM";
       codeReady = false;
       LanguageBox.SelectedIndex = 0;
