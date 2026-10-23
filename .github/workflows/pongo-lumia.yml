@@ -1,0 +1,200 @@
+name: Build Pongo Lumia ARM package
+on:
+  push:
+    paths:
+      - '.github/workflows/pongo-lumia.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate native UWP project
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $PWD 'PongoLumia'
+          New-Item -ItemType Directory -Force $root, (Join-Path $root 'Assets') | Out-Null
+          @'
+          <?xml version="1.0" encoding="utf-8"?>
+          <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+            <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+            <PropertyGroup>
+              <ProjectGuid>{C27E06E4-47B0-4D93-A0C0-4A7AA9D7A55C}</ProjectGuid><ProjectTypeGuids>{A5A43C5B-DE2A-4C0C-9213-0A3E2BDA1C44};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids><WindowsXamlEnableOverview>true</WindowsXamlEnableOverview><EnableDotNetNativeCompatibleProfile>true</EnableDotNetNativeCompatibleProfile><OutputType>AppContainerExe</OutputType><RootNamespace>PongoLumia</RootNamespace><AssemblyName>PongoLumia</AssemblyName><DefaultLanguage>en-US</DefaultLanguage><TargetPlatformIdentifier>UAP</TargetPlatformIdentifier><TargetPlatformVersion>10.0.15063.0</TargetPlatformVersion><TargetPlatformMinVersion>10.0.14393.0</TargetPlatformMinVersion><MinimumVisualStudioVersion>14.0</MinimumVisualStudioVersion><AppxPackageSigningEnabled>false</AppxPackageSigningEnabled><AppxBundle>Never</AppxBundle><RestoreProjectStyle>PackageReference</RestoreProjectStyle>
+            </PropertyGroup>
+            <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'"><PlatformTarget>ARM</PlatformTarget><OutputPath>bin\ARM\Release\</OutputPath><Optimize>true</Optimize><DefineConstants>TRACE;NETFX_CORE;WINDOWS_UWP</DefineConstants><UseDotNetNativeToolchain>false</UseDotNetNativeToolchain></PropertyGroup>
+            <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'"><PlatformTarget>ARM</PlatformTarget><OutputPath>bin\ARM\Debug\</OutputPath><DefineConstants>DEBUG;TRACE;NETFX_CORE;WINDOWS_UWP</DefineConstants><UseDotNetNativeToolchain>false</UseDotNetNativeToolchain></PropertyGroup>
+            <ItemGroup><Compile Include="App.xaml.cs"><DependentUpon>App.xaml</DependentUpon></Compile><Compile Include="MainPage.xaml.cs"><DependentUpon>MainPage.xaml</DependentUpon></Compile></ItemGroup>
+            <ItemGroup><ApplicationDefinition Include="App.xaml"><Generator>MSBuild:Compile</Generator></ApplicationDefinition><Page Include="MainPage.xaml"><Generator>MSBuild:Compile</Generator></Page></ItemGroup>
+            <ItemGroup><Content Include="Assets\StoreLogo.png"/><Content Include="Assets\Square150x150Logo.png"/><Content Include="Assets\Square44x44Logo.png"/><Content Include="Assets\Wide310x150Logo.png"/><Content Include="Assets\SplashScreen.png"/><AppxManifest Include="Package.appxmanifest"/></ItemGroup>
+            <ItemGroup><PackageReference Include="Microsoft.NETCore.UniversalWindowsPlatform" Version="6.2.14" /></ItemGroup>
+            <Import Project="$(MSBuildExtensionsPath)\Microsoft\WindowsXaml\v$(VisualStudioVersion)\Microsoft.Windows.UI.Xaml.CSharp.targets" />
+          </Project>
+          '@ | Set-Content (Join-Path $root 'PongoLumia.csproj') -Encoding utf8
+          @'
+          <Application x:Class="PongoLumia.App" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"><Application.Resources><ResourceDictionary><SolidColorBrush x:Key="AccentBrush" Color="#FF238FE0"/></ResourceDictionary></Application.Resources></Application>
+          '@ | Set-Content (Join-Path $root 'App.xaml') -Encoding utf8
+          @'
+          using Windows.ApplicationModel.Activation;
+          using Windows.UI.Xaml;
+          using Windows.UI.Xaml.Controls;
+          namespace PongoLumia {
+            sealed partial class App : Application {
+              public App(){ InitializeComponent(); }
+              protected override void OnLaunched(LaunchActivatedEventArgs e) {
+                var frame = Window.Current.Content as Frame;
+                if(frame == null){ frame = new Frame(); Window.Current.Content = frame; }
+                if(frame.Content == null) frame.Navigate(typeof(MainPage), e.Arguments);
+                Window.Current.Activate();
+              }
+            }
+          }
+          '@ | Set-Content (Join-Path $root 'App.xaml.cs') -Encoding utf8
+          @'
+          <Page x:Class="PongoLumia.MainPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Background="#FF0B1020">
+            <Grid>
+              <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+              <StackPanel Orientation="Horizontal" Padding="16" Spacing="12"><Grid Width="48" Height="48"><Ellipse Stroke="#FF238FE0" StrokeThickness="5"/><Ellipse Margin="7" Stroke="#FF63D6FF" StrokeThickness="2"/></Grid><StackPanel VerticalAlignment="Center"><TextBlock Text="PONGO" Foreground="White" FontSize="22" FontWeight="SemiBold"/><TextBlock Text="Your smug little penguin" Foreground="#FF9DB1D1"/></StackPanel></StackPanel>
+              <ScrollViewer Grid.Row="1" Margin="14"><StackPanel><TextBlock x:Name="Welcome" Text="Oh, good. You're here. Pongo is ready to help." Foreground="White" FontSize="25" TextWrapping="Wrap" Margin="0,8,0,16"/><TextBox x:Name="Conversation" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="220" Background="#FF11192B" Foreground="#FFE7F1FF" FontSize="15" BorderThickness="0" Padding="12"/><TextBlock x:Name="Status" Text="Ready" Foreground="#FF8CA6C8" Margin="4,10,0,0"/></StackPanel></ScrollViewer>
+              <StackPanel Grid.Row="2" Background="#FF11192B" Padding="10" Spacing="8"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="52"/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions><TextBox x:Name="Prompt" PlaceholderText="Ask Pongo… (try: time, date, note ..., search ...) " FontSize="16" KeyDown="Prompt_KeyDown"/><Button Grid.Column="1" Content="➤" Click="Send_Click" Margin="4,0,0,0"/><Button Grid.Column="2" Content="🎙" Click="Listen_Click" Margin="4,0,0,0"/></Grid><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Button Content="Time" Click="Time_Click" Margin="0,0,4,0"/><Button Grid.Column="1" Content="Notes" Click="Notes_Click" Margin="2,0"/><Button Grid.Column="2" Content="Search" Click="Search_Click" Margin="4,0,0,0"/></Grid></StackPanel>
+              <MediaElement x:Name="Speech" Width="1" Height="1" Opacity="0" AutoPlay="False"/>
+            </Grid>
+          </Page>
+          '@ | Set-Content (Join-Path $root 'MainPage.xaml') -Encoding utf8
+          @'
+          using System;
+          using System.Text.RegularExpressions;
+          using System.Threading.Tasks;
+          using Windows.Media.SpeechRecognition;
+          using Windows.Media.SpeechSynthesis;
+          using Windows.Storage;
+          using Windows.System;
+          using Windows.UI.Xaml;
+          using Windows.UI.Xaml.Controls;
+          using Windows.UI.Xaml.Input;
+          namespace PongoLumia {
+            public sealed partial class MainPage : Page {
+              bool busy;
+              ApplicationDataContainer data = ApplicationData.Current.LocalSettings;
+              public MainPage(){ InitializeComponent(); Conversation.Text = "PONGO • Ready\r\nTry: time, date, note buy milk, show notes, open YouTube, or search Minecraft redstone.\r\n\r\n"; }
+              async void Send_Click(object s,RoutedEventArgs e){ await Submit(Prompt.Text); }
+              async void Prompt_KeyDown(object s,KeyRoutedEventArgs e){ if(e.Key==VirtualKey.Enter){e.Handled=true;await Submit(Prompt.Text);} }
+              async void Listen_Click(object s,RoutedEventArgs e){ try { Status.Text="Listening…"; using(var r=new SpeechRecognizer()){r.Constraints.Add(new SpeechRecognitionTopicConstraint(SpeechRecognitionScenario.Dictation,"assistant request")); await r.CompileConstraintsAsync(); var v=await r.RecognizeWithUIAsync(); if(v.Status==SpeechRecognitionResultStatus.Success) {Prompt.Text=v.Text; await Submit(v.Text);} else Status.Text="Didn't catch that.";}} catch(Exception ex){Status.Text="Voice input unavailable: "+ex.Message;} }
+              async Task Submit(string raw){var q=(raw??"").Trim();if(q.Length==0||busy)return;Prompt.Text="";Conversation.Text+="YOU\r\n"+q+"\r\n\r\n";busy=true;Status.Text="Pongo is considering your request…";string a="";try{var l=q.ToLowerInvariant();if(l.Contains("time"))a="It is "+DateTime.Now.ToString("h:mm tt")+". You're welcome. I do enjoy being right on time.";else if(l.Contains("date")||l.Contains("day is it"))a="It is "+DateTime.Now.ToString("dddd, MMMM d, yyyy")+". You may applaud quietly.";else if(l.StartsWith("note ")||l.StartsWith("remember this ")){var n=q.Substring(q.IndexOf(' ')+1);var old=data.Values.ContainsKey("Notes")?data.Values["Notes"].ToString():"";data.Values["Notes"]=old+"\r\n"+DateTime.Now.ToString("g")+" | "+n;a="Saved. I put it somewhere safe, unlike your attention span.";}else if(l.Contains("show my notes")||l=="notes"||l=="my notes")a=data.Values.ContainsKey("Notes")?data.Values["Notes"].ToString():"No notes yet. A blank page. Much like your planning. Let us fix that.";else if(l.StartsWith("search ")||l.StartsWith("google ")||l.StartsWith("look up ")){await Launcher.LaunchUriAsync(new Uri("https://www.bing.com/search?q="+Uri.EscapeDataString(q)));a="Opening web results for "+q+". Try not to get lost in there.";}else if(l.StartsWith("open ")){var site=l.Substring(5).Trim();string url=site.Contains("youtube")?"https://m.youtube.com/":site.Contains("wikipedia")?"https://en.wikipedia.org/":site.Contains("github")?"https://github.com/":site.Contains("google")?"https://www.google.com/":null;if(url!=null){await Launcher.LaunchUriAsync(new Uri(url));a="Opening "+site+". I picked it, so naturally it is a good choice.";}else a="Try open YouTube, Wikipedia, GitHub, or Google.";}else{await Launcher.LaunchUriAsync(new Uri("https://www.bing.com/search?q="+Uri.EscapeDataString(q)));a="I opened web results. My brilliant penguin brain is currently best at built-in commands and web search. A PC-hosted AI connection can make me more conversational in a later update.";}Conversation.Text+="PONGO\r\n"+a+"\r\n\r\n";Status.Text="Ready";try{using(var t=new SpeechSynthesizer()){var stream=await t.SynthesizeTextToStreamAsync(a);Speech.SetSource(stream,stream.ContentType);Speech.Play();}}catch{} }catch(Exception ex){Status.Text="Error: "+ex.Message;}finally{busy=false;}}
+              async void Time_Click(object s,RoutedEventArgs e){await Submit("what time is it");}
+              async void Notes_Click(object s,RoutedEventArgs e){await Submit("show my notes");}
+              async void Search_Click(object s,RoutedEventArgs e){var q=Prompt.Text.Trim();if(q.Length==0)q="latest news";await Launcher.LaunchUriAsync(new Uri("https://www.bing.com/search?q="+Uri.EscapeDataString(q)));Status.Text="Opened web search.";}
+            }
+          }
+          '@ | Set-Content (Join-Path $root 'MainPage.xaml.cs') -Encoding utf8
+          @'
+          <?xml version="1.0" encoding="utf-8"?>
+          <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" IgnorableNamespaces="uap mp">
+            <Identity Name="BlazeBinky.PongoLumia" Publisher="CN=BlazeBinky" Version="1.0.0.0"/>
+            <mp:PhoneIdentity PhoneProductId="5e0b48db-28bd-4e21-9db5-30b5d071a2b1" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+            <Properties><DisplayName>Pongo</DisplayName><PublisherDisplayName>BlazeBinky</PublisherDisplayName><Logo>Assets\StoreLogo.png</Logo></Properties>
+            <Dependencies><TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.14393.0" MaxVersionTested="10.0.15063.0"/></Dependencies>
+            <Resources><Resource Language="en-us"/></Resources>
+            <Applications><Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="PongoLumia.App"><uap:VisualElements DisplayName="Pongo" Description="Pongo, the sassy penguin assistant for Lumia" BackgroundColor="#0B1020" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png"><uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png"/><uap:SplashScreen Image="Assets\SplashScreen.png"/></uap:VisualElements></Application></Applications>
+            <Capabilities><Capability Name="internetClient"/><Capability Name="privateNetworkClientServer"/><DeviceCapability Name="microphone"/></Capabilities>
+          </Package>
+          '@ | Set-Content (Join-Path $root 'Package.appxmanifest') -Encoding utf8
+          Add-Type -AssemblyName System.Drawing
+          function Make-Logo([int]$size,[string]$path){
+            $bmp=[System.Drawing.Bitmap]::new($size,$size);$g=[System.Drawing.Graphics]::FromImage($bmp);$g.SmoothingMode=[System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+            $g.Clear([System.Drawing.Color]::FromArgb(11,16,32))
+            $white=[System.Drawing.SolidBrush]::new([System.Drawing.Color]::White)
+            $black=[System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(17,22,33))
+            $belly=[System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(239,246,255))
+            $orange=[System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(255,166,45))
+            $blue=[System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(35,143,224))
+            $eye=[System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(10,16,28))
+            $g.FillEllipse($blue,$size*.12,$size*.12,$size*.76,$size*.76)
+            $g.FillEllipse($black,$size*.28,$size*.15,$size*.46,$size*.68)
+            $g.FillEllipse($belly,$size*.37,$size*.43,$size*.28,$size*.32)
+            $g.FillEllipse($white,$size*.36,$size*.29,$size*.105,$size*.12);$g.FillEllipse($white,$size*.535,$size*.29,$size*.105,$size*.12)
+            $g.FillEllipse($eye,$size*.398,$size*.325,$size*.05,$size*.06);$g.FillEllipse($eye,$size*.573,$size*.325,$size*.05,$size*.06)
+            $beak=[System.Drawing.Point[]]@([System.Drawing.Point]::new([int]($size*.47),[int]($size*.405)),[System.Drawing.Point]::new([int]($size*.53),[int]($size*.405)),[System.Drawing.Point]::new([int]($size*.50),[int]($size*.465)))
+            $g.FillPolygon($orange,$beak)
+            $g.FillEllipse($orange,$size*.36,$size*.79,$size*.13,$size*.065);$g.FillEllipse($orange,$size*.51,$size*.79,$size*.13,$size*.065)
+            $bmp.Save($path,[System.Drawing.Imaging.ImageFormat]::Png)
+            $white.Dispose();$black.Dispose();$belly.Dispose();$orange.Dispose();$blue.Dispose();$eye.Dispose();$g.Dispose();$bmp.Dispose()
+          }
+          Make-Logo 50 (Join-Path $root 'Assets\StoreLogo.png');Make-Logo 150 (Join-Path $root 'Assets\Square150x150Logo.png');Make-Logo 44 (Join-Path $root 'Assets\Square44x44Logo.png')
+          $wide=[System.Drawing.Bitmap]::new(310,150);$g=[System.Drawing.Graphics]::FromImage($wide);$g.Clear([System.Drawing.Color]::FromArgb(11,16,32));$g.DrawImage([System.Drawing.Image]::FromFile((Join-Path $root 'Assets\Square150x150Logo.png')),35,0,150,150);$wide.Save((Join-Path $root 'Assets\Wide310x150Logo.png'),[System.Drawing.Imaging.ImageFormat]::Png);$g.Dispose();$wide.Dispose()
+          $splash=[System.Drawing.Bitmap]::new(620,300);$g=[System.Drawing.Graphics]::FromImage($splash);$g.Clear([System.Drawing.Color]::FromArgb(11,16,32));$g.DrawImage([System.Drawing.Image]::FromFile((Join-Path $root 'Assets\Square150x150Logo.png')),235,75,150,150);$splash.Save((Join-Path $root 'Assets\SplashScreen.png'),[System.Drawing.Imaging.ImageFormat]::Png);$g.Dispose();$splash.Dispose()
+          @'
+          Microsoft Visual Studio Solution File, Format Version 12.00
+          # Visual Studio Version 17
+          VisualStudioVersion = 17.0.31903.59
+          MinimumVisualStudioVersion = 10.0.40219.1
+          Project("{A5A43C5B-DE2A-4C0C-9213-0A3E2BDA1C44}") = "PongoLumia", "PongoLumia.csproj", "{C27E06E4-47B0-4D93-A0C0-4A7AA9D7A55C}"
+          EndProject
+          Global
+            GlobalSection(SolutionConfigurationPlatforms) = preSolution
+              Debug|ARM = Debug|ARM
+              Release|ARM = Release|ARM
+            EndGlobalSection
+            GlobalSection(ProjectConfigurationPlatforms) = postSolution
+              {C27E06E4-47B0-4D93-A0C0-4A7AA9D7A55C}.Debug|ARM.ActiveCfg = Debug|ARM
+              {C27E06E4-47B0-4D93-A0C0-4A7AA9D7A55C}.Debug|ARM.Build.0 = Debug|ARM
+              {C27E06E4-47B0-4D93-A0C0-4A7AA9D7A55C}.Release|ARM.ActiveCfg = Release|ARM
+              {C27E06E4-47B0-4D93-A0C0-4A7AA9D7A55C}.Release|ARM.Build.0 = Release|ARM
+            EndGlobalSection
+          EndGlobal
+          '@ | Set-Content (Join-Path $root 'PongoLumia.sln') -Encoding utf8
+      - name: Build ARM app package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          msbuild PongoLumia\PongoLumia.csproj /restore /m /v:minimal /p:Configuration=Release /p:Platform=ARM /p:UseDotNetNativeToolchain=false /p:AppxPackageSigningEnabled=false /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly '/flp:logfile=build.log;verbosity=normal'
+          if ($LASTEXITCODE -ne 0) { throw "ARM build failed with exit code $LASTEXITCODE" }
+          $appx = Get-ChildItem PongoLumia -Recurse -Filter '*.appx' | Where-Object { $_.FullName -notmatch '\\Dependencies\\|Symbols|TestCertificate' } | Select-Object -First 1
+          if (-not $appx) { throw 'Build succeeded but no ARM .appx was produced.' }
+          New-Item -ItemType Directory -Force out | Out-Null
+          Copy-Item $appx.FullName out\Pongo-ARM-unsigned.appx
+      - name: Sign package and collect dependencies
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $cert = New-SelfSignedCertificate -Type Custom -Subject 'CN=BlazeBinky' -KeyUsage DigitalSignature -FriendlyName 'Pongo Lumia test signing' -CertStoreLocation 'Cert:\CurrentUser\My' -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3','2.5.29.19={text}')
+          Export-Certificate -Cert $cert -FilePath out\Pongo-TestCertificate.cer | Out-Null
+          $pw = ConvertTo-SecureString "PongoDev-$env:GITHUB_RUN_ID" -AsPlainText -Force
+          Export-PfxCertificate -Cert $cert -FilePath out\temporary.pfx -Password $pw | Out-Null
+          $sdk = Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'Windows Kits\10\bin'
+          $sign = Get-ChildItem $sdk -Recurse -Filter signtool.exe | Where-Object { $_.FullName -match '\\x64\\' } | Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $sign) { throw 'SignTool not found in Windows SDK.' }
+          & $sign.FullName sign /fd SHA256 /f out\temporary.pfx /p "PongoDev-$env:GITHUB_RUN_ID" out\Pongo-ARM-unsigned.appx
+          if ($LASTEXITCODE -ne 0) { throw 'Package signing failed.' }
+          Move-Item out\Pongo-ARM-unsigned.appx out\Pongo-ARM.appx -Force
+          Remove-Item out\temporary.pfx -Force
+          New-Item -ItemType Directory -Force out\Dependencies | Out-Null
+          $deps = Get-ChildItem PongoLumia -Recurse -Filter '*.appx' | Where-Object { $_.FullName -match '\\Dependencies\\' }
+          foreach ($dep in $deps) { if ($dep.Name -match 'ARM|CoreRuntime|VCLibs') { Copy-Item $dep.FullName out\Dependencies -Force } }
+          @'
+          Pongo Lumia Edition — ARM test package
+          
+          Files:
+          - Pongo-ARM.appx: signed test package
+          - Pongo-TestCertificate.cer: public self-signed test certificate
+          - Dependencies/: runtime dependencies emitted by the build, if any
+          
+          Install with a Windows 10 Mobile deployment tool on a developer-unlocked compatible phone. If prompted, trust the included certificate on your own device. This is a test-signed sideload package, not a Store-signed release.
+          
+          Features in this initial build: voice dictation through Windows speech UI, spoken replies, time/date, local notes, website shortcuts, and web search.
+          
+          Limitations: This is a separate app named Pongo; it cannot replace Microsoft's protected system Cortana package, system search button, or always-on wake word. Test on the actual Lumia before relying on it. If the package requires runtime dependencies not emitted by this SDK configuration, install the ARM dependencies listed in the ZIP.
+          '@ | Set-Content out\INSTALL.txt -Encoding utf8
+          Compress-Archive -Path out\* -DestinationPath Pongo-Lumia-ARM-Install.zip -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pongo-Lumia-ARM-Install-ZIP
+          path: Pongo-Lumia-ARM-Install.zip
+          if-no-files-found: error
+          retention-days: 30
