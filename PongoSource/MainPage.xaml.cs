@@ -21,8 +21,8 @@ namespace PongoLumia {
     private bool codeReady;
     private bool localModelLoaded;
     private bool modelBusy;
-    private const string ModelFileName = "SmolLM2-135M-Instruct-Q4_K_M.gguf";
-    private const string ModelUrl = "https://huggingface.co/tensorblock/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf?download=true";
+    private const string ModelFileName = "SmolLM2-135M-Instruct-Q3_K_M.gguf";
+    private const string ModelUrl = "https://huggingface.co/tensorblock/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q3_K_M.gguf?download=true";
 
     [DllImport("PongoLlmNative.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode, ExactSpelling = true)]
     private static extern int PongoLlmLoad([MarshalAs(UnmanagedType.LPWStr)] string modelPath);
@@ -70,7 +70,7 @@ namespace PongoLumia {
       InitializeComponent();
       Conversation.Text = data.Values.ContainsKey("ChatHistory")
         ? data.Values["ChatHistory"].ToString()
-        : "PONGO • ON-DEVICE LANGUAGE MODEL\r\nDownload the optional ~105 MB model once using the button above; it then generates replies on this phone without an AI API. The mini helper works offline even before that.\r\nTry: hello, 7 * 8, teach question => answer, note ..., show notes, or ask about Python, XAML, .appx, AI, electricity, or redstone.\r\n\r\n";
+        : "PONGO • ON-DEVICE LANGUAGE MODEL\r\nDownload the optional ~94 MB model once using the button above; it then generates replies on this phone without an AI API. The mini helper works offline even before that.\r\nTry: hello, 7 * 8, teach question => answer, note ..., show notes, or ask about Python, XAML, .appx, AI, electricity, or redstone.\r\n\r\n";
       Status.Text = "Mini offline helper ready • optional local LLM";
       codeReady = false;
       LanguageBox.SelectedIndex = 0;
@@ -151,13 +151,13 @@ namespace PongoLumia {
       if (l == "time" || l.Contains("what time") || l == "current time" ||
           l == "date" || l.Contains("what date") || l.Contains("what day is it") || l == "today" ||
           l.Contains("show my notes") || l == "notes" || l == "my notes" || l == "show notes") return true;
-      return Regex.IsMatch(l, @"(-?[0-9]+(?:\\.[0-9]+)?)\\s*([+\\-*/x])\\s*(-?[0-9]+(?:\\.[0-9]+)?)");
+      return Regex.IsMatch(l, @"(-?[0-9]+(?:\.[0-9]+)?)\s*([+\-*/x])\s*(-?[0-9]+(?:\.[0-9]+)?)");
     }
 
     private string GenerateLocalLlmReply(string question) {
       string system = "You are Pongo, a witty, slightly self-important penguin assistant. Be helpful, clear, safe, and honest. Help explain concepts and write code. Never claim you ran code or accessed the internet. Keep answers concise but useful. If uncertain, say so.";
-      string prompt = "<|im_start|>system\\n" + system + "<|im_end|>\\n" +
-        "<|im_start|>user\\n" + question + "<|im_end|>\\n<|im_start|>assistant\\n";
+      string prompt = "<|im_start|>system\n" + system + "<|im_end|>\n" +
+        "<|im_start|>user\n" + question + "<|im_end|>\n<|im_start|>assistant\n";
       var output = new StringBuilder(8192);
       int count = PongoLlmGenerate(prompt, output, output.Capacity, 112);
       if (count < 0) throw new InvalidOperationException("Model inference returned error " + count + ".");
@@ -178,7 +178,7 @@ namespace PongoLumia {
         StorageFile modelFile = null;
         try { modelFile = await ApplicationData.Current.LocalFolder.GetFileAsync(ModelFileName); }
         catch {
-          Status.Text = "Downloading the 105 MB model. Keep Pongo open and connected to Wi-Fi…";
+          Status.Text = "Downloading the 94 MB model. Keep Pongo open and connected to Wi-Fi…";
           StorageFile temp = await ApplicationData.Current.LocalFolder.CreateFileAsync("PongoModel.download", CreationCollisionOption.ReplaceExisting);
           var downloader = new BackgroundDownloader();
           var operation = downloader.CreateDownload(new Uri(ModelUrl), temp);
@@ -200,7 +200,7 @@ namespace PongoLumia {
         localModelLoaded = true;
         LocalModelButton.Content = "Local AI loaded ✓";
         Status.Text = "Real local LLM ready • on-device inference • no API";
-        Conversation.Text += "PONGO • SYSTEM\\r\\nThe 135M-parameter language model is loaded. New questions can now be generated locally on this phone.\\r\\n\\r\\n";
+        Conversation.Text += "PONGO • SYSTEM\r\nThe 135M-parameter language model is loaded. New questions can now be generated locally on this phone.\r\n\r\n";
         SaveChat();
       } catch (DllNotFoundException) {
         Status.Text = "This app package is missing the native ARM32 inference engine. Install the updated build.";
@@ -220,7 +220,7 @@ namespace PongoLumia {
         LocalModelButton.Content = "Load downloaded local AI model";
         Status.Text = "Model file is already stored on this phone. Tap to load; inference stays offline.";
       } catch {
-        LocalModelButton.Content = "Get local AI model (~105 MB)";
+        LocalModelButton.Content = "Get local AI model (~94 MB)";
       }
     }
 
@@ -270,7 +270,7 @@ namespace PongoLumia {
       if (l.Contains("who are you") || l.Contains("your name") || l == "what are you")
         return "I'm Pongo, the slightly self-important penguin. Without the extra model I use a tiny offline helper. After you download the 135M-parameter local model, I can generate language on this phone too. No AI API or account is needed.";
       if (l == "help" || l.Contains("what can you do") || l.Contains("how do i use you"))
-        return "Tap 'Get local AI model' to download a 135M-parameter transformer (~105 MB) for on-device generation. After setup it works offline without an API. You can also use '7 * 8', 'note ...', 'show my notes', or 'teach what is redstone => ...'. Code Lab edits HTML/JavaScript, Python, C#, and XAML.";
+        return "Tap 'Get local AI model' to download a 135M-parameter transformer (~94 MB) for on-device generation. After setup it works offline without an API. You can also use '7 * 8', 'note ...', 'show my notes', or 'teach what is redstone => ...'. Code Lab edits HTML/JavaScript, Python, C#, and XAML.";
       if (l.Contains("how are you")) return "Excellent. My feathers are pristine and my tiny brain is entirely on-device. How are you?";
       if (l.Contains("thank")) return "You're welcome. Compliments are also welcome, though I prefer accurate ones.";
 
