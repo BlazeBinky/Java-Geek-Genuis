@@ -21,8 +21,13 @@ def patch_toolchain(path: Path) -> None:
         if not match:
             raise ValueError(f"{variable} definition not found in {path}")
         prefix = match.group(1)
+        additions = []
         if "-DWTF_PLATFORM_MUI=1" not in prefix:
-            text = text[:match.start(1)] + prefix + " -DWTF_PLATFORM_MUI=1" + text[match.end(1):]
+            additions.append("-DWTF_PLATFORM_MUI=1")
+        if "-DUSE_PTHREADS=1" not in prefix:
+            additions.append("-DUSE_PTHREADS=1")
+        if additions:
+            text = text[:match.start(1)] + prefix + " " + " ".join(additions) + text[match.end(1):]
     path.write_text(text, encoding="utf-8")
 
 
