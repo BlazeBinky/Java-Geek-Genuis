@@ -1,0 +1,177 @@
+<Page
+    x:Class="FitnessTracker.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Background="#FF0A111F">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+    <Grid Padding="15,10,15,8">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+      <StackPanel>
+        <TextBlock Text="FITTRACK" FontSize="25" FontWeight="SemiBold" Foreground="#FFF2F7FF" />
+        <TextBlock Text="Move a little. Feel a lot." FontSize="12" Foreground="#FF91A8C5" />
+      </StackPanel>
+      <Button Grid.Column="1" Content="Export" Click="Export_Click" VerticalAlignment="Center" />
+    </Grid>
+    <Pivot x:Name="MainPivot" Grid.Row="1" Margin="0,0,0,4" Foreground="#FFF0F5FF">
+      <PivotItem Header="Today">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="14,4,14,24">
+            <TextBlock x:Name="DateText" Text="TODAY" FontSize="14" Foreground="#FF9CB2CA" Margin="2,0,0,10" />
+            <Border Background="#FF12283A" BorderBrush="#FF23465A" BorderThickness="1" CornerRadius="14" Padding="16" Margin="0,0,0,10">
+              <StackPanel>
+                <Grid>
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <StackPanel>
+                    <TextBlock Text="STEPS" Foreground="#FFA5BCD2" FontSize="12" />
+                    <TextBlock x:Name="StepsText" Text="0" FontSize="38" FontWeight="SemiBold" Foreground="#FF5AE6C0" />
+                    <TextBlock x:Name="StepGoalText" Text="Goal: 8,000" Foreground="#FFA5BCD2" FontSize="12" />
+                  </StackPanel>
+                  <TextBlock Grid.Column="1" Text="👟" FontSize="38" VerticalAlignment="Center" Margin="8" />
+                </Grid>
+                <ProgressBar x:Name="StepProgress" Maximum="100" Value="0" Height="7" Foreground="#FF5AE6C0" Background="#FF2A4353" Margin="0,12,0,0" />
+              </StackPanel>
+            </Border>
+            <Grid Margin="0,0,0,10">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Border Background="#FF151D2C" CornerRadius="12" Padding="12" Margin="0,0,5,0">
+                <StackPanel>
+                  <TextBlock Text="STEP DISTANCE" FontSize="10" Foreground="#FF9CB0C8" />
+                  <TextBlock x:Name="DistanceText" Text="0.00 km" FontSize="23" Foreground="#FFF0F5FF" Margin="0,4,0,0" />
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="1" Background="#FF151D2C" CornerRadius="12" Padding="12" Margin="5,0,0,0">
+                <StackPanel>
+                  <TextBlock Text="BURNED (EST.)" FontSize="10" Foreground="#FF9CB0C8" />
+                  <TextBlock x:Name="BurnedText" Text="0 kcal" FontSize="23" Foreground="#FFFFBB78" Margin="0,4,0,0" />
+                </StackPanel>
+              </Border>
+            </Grid>
+            <Grid Margin="0,0,0,10">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Border Background="#FF151D2C" CornerRadius="12" Padding="12" Margin="0,0,5,0">
+                <StackPanel>
+                  <TextBlock Text="FOOD EATEN" FontSize="10" Foreground="#FF9CB0C8" />
+                  <TextBlock x:Name="FoodCaloriesText" Text="0 kcal" FontSize="23" Foreground="#FFFF929E" Margin="0,4,0,0" />
+                  <TextBlock x:Name="FoodGoalText" Text="Goal: 2,000 kcal" FontSize="10" Foreground="#FF9CB0C8" />
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="1" Background="#FF151D2C" CornerRadius="12" Padding="12" Margin="5,0,0,0">
+                <StackPanel>
+                  <TextBlock Text="CALORIE BALANCE" FontSize="10" Foreground="#FF9CB0C8" />
+                  <TextBlock x:Name="BalanceCaloriesText" Text="0 kcal" FontSize="23" Foreground="#FFB9A5FF" Margin="0,4,0,0" />
+                  <TextBlock Text="Food minus estimated burn" FontSize="10" Foreground="#FF9CB0C8" TextWrapping="Wrap" />
+                </StackPanel>
+              </Border>
+            </Grid>
+            <Border Background="#FF151D2C" CornerRadius="12" Padding="13" Margin="0,0,0,10">
+              <StackPanel>
+                <TextBlock Text="QUICK STEP ENTRY" FontSize="13" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,7" />
+                <TextBlock Text="Your phone's step sensor is used when available. You can also add steps from another device." Foreground="#FF9CB0C8" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8" />
+                <Grid>
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <TextBox x:Name="ManualStepsBox" PlaceholderText="Steps to add" />
+                  <Button Grid.Column="1" Content="Add steps" Click="AddSteps_Click" Margin="7,0,0,0" />
+                </Grid>
+                <TextBlock x:Name="SensorStatusText" Text="Checking step sensor…" Foreground="#FF5AE6C0" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
+            <Border Background="#FF151D2C" CornerRadius="12" Padding="13">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel>
+                  <TextBlock Text="WATER" FontSize="12" Foreground="#FF9CB0C8" />
+                  <TextBlock x:Name="WaterText" Text="0 / 8 glasses" FontSize="20" Foreground="#FF7DCBFF" Margin="0,4,0,0" />
+                </StackPanel>
+                <Button Grid.Column="1" Content="+ 1 glass" Click="AddWater_Click" VerticalAlignment="Center" />
+              </Grid>
+            </Border>
+            <TextBlock Text="All calorie and distance values are estimates. This app is not a medical device." FontSize="10" Foreground="#FF8094AF" TextWrapping="Wrap" Margin="2,12,2,0" />
+          </StackPanel>
+        </ScrollViewer>
+      </PivotItem>
+      <PivotItem Header="Activity">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="14,4,14,22">
+            <TextBlock Text="LOG AN ACTIVITY" FontSize="14" Foreground="#FF5AE6C0" FontWeight="SemiBold" Margin="0,0,0,10" />
+            <TextBlock Text="Record a run, walk, or cycle. Burn estimates use your saved weight." Foreground="#FF9CB0C8" TextWrapping="Wrap" Margin="0,0,0,12" />
+            <TextBlock Text="Activity" Foreground="#FFB6C7DA" />
+            <ComboBox x:Name="ActivityTypeBox" SelectedIndex="0" Margin="0,4,0,10">
+              <ComboBoxItem Content="Run" />
+              <ComboBoxItem Content="Walk" />
+              <ComboBoxItem Content="Cycle" />
+            </ComboBox>
+            <TextBlock Text="Distance (kilometres)" Foreground="#FFB6C7DA" />
+            <TextBox x:Name="ActivityDistanceBox" PlaceholderText="e.g. 3.5" Margin="0,4,0,10" />
+            <TextBlock Text="Duration (minutes)" Foreground="#FFB6C7DA" />
+            <TextBox x:Name="ActivityDurationBox" PlaceholderText="e.g. 25" Margin="0,4,0,12" />
+            <Button Content="Save activity" Click="SaveActivity_Click" HorizontalAlignment="Stretch" />
+            <TextBlock x:Name="ActivityStatusText" Foreground="#FF5AE6C0" TextWrapping="Wrap" Margin="0,8,0,12" />
+            <TextBlock Text="TODAY'S EXERCISE" FontSize="13" Foreground="#FF9CB0C8" Margin="0,6,0,5" />
+            <ListView x:Name="ActivityList" IsItemClickEnabled="False" />
+          </StackPanel>
+        </ScrollViewer>
+      </PivotItem>
+      <PivotItem Header="Food">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="14,4,14,22">
+            <Border Background="#FF211A2B" CornerRadius="12" Padding="14" Margin="0,0,0,12">
+              <StackPanel>
+                <TextBlock Text="CALORIES EATEN TODAY" FontSize="12" Foreground="#FFCCB4D8" />
+                <TextBlock x:Name="FoodPageCaloriesText" Text="0 kcal" FontSize="32" FontWeight="SemiBold" Foreground="#FFFF9CB1" />
+                <ProgressBar x:Name="FoodProgress" Maximum="100" Value="0" Height="7" Foreground="#FFFF8CA3" Background="#FF493447" Margin="0,6,0,0" />
+              </StackPanel>
+            </Border>
+            <TextBlock Text="Food or drink" Foreground="#FFB6C7DA" />
+            <TextBox x:Name="FoodNameBox" PlaceholderText="e.g. oatmeal and banana" Margin="0,4,0,10" />
+            <TextBlock Text="Meal" Foreground="#FFB6C7DA" />
+            <ComboBox x:Name="MealTypeBox" SelectedIndex="0" Margin="0,4,0,10">
+              <ComboBoxItem Content="Breakfast" /><ComboBoxItem Content="Lunch" /><ComboBoxItem Content="Dinner" /><ComboBoxItem Content="Snack" /><ComboBoxItem Content="Drink" />
+            </ComboBox>
+            <TextBlock Text="Calories (kcal)" Foreground="#FFB6C7DA" />
+            <TextBox x:Name="FoodCaloriesBox" PlaceholderText="e.g. 350" Margin="0,4,0,12" />
+            <Button Content="Add food" Click="AddFood_Click" HorizontalAlignment="Stretch" />
+            <TextBlock x:Name="FoodStatusText" Foreground="#FF5AE6C0" TextWrapping="Wrap" Margin="0,8,0,12" />
+            <TextBlock Text="TODAY'S FOOD LOG" FontSize="13" Foreground="#FF9CB0C8" Margin="0,6,0,5" />
+            <ListView x:Name="FoodList" />
+          </StackPanel>
+        </ScrollViewer>
+      </PivotItem>
+      <PivotItem Header="Goals">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="14,4,14,22">
+            <TextBlock Text="YOUR DAILY TARGETS" FontSize="14" Foreground="#FF5AE6C0" FontWeight="SemiBold" Margin="0,0,0,12" />
+            <TextBlock Text="Step goal" Foreground="#FFB6C7DA" />
+            <TextBox x:Name="StepGoalBox" PlaceholderText="8000" Margin="0,4,0,10" />
+            <TextBlock Text="Food calorie goal (kcal)" Foreground="#FFB6C7DA" />
+            <TextBox x:Name="CalorieGoalBox" PlaceholderText="2000" Margin="0,4,0,10" />
+            <TextBlock Text="Body weight (kg)" Foreground="#FFB6C7DA" />
+            <TextBox x:Name="WeightBox" PlaceholderText="70" Margin="0,4,0,10" />
+            <TextBlock Text="Average step length (cm)" Foreground="#FFB6C7DA" />
+            <TextBox x:Name="StrideBox" PlaceholderText="75" Margin="0,4,0,12" />
+            <Button Content="Save goals" Click="SaveGoals_Click" HorizontalAlignment="Stretch" />
+            <TextBlock x:Name="GoalsStatusText" Foreground="#FF5AE6C0" TextWrapping="Wrap" Margin="0,8,0,12" />
+            <Border Background="#FF151D2C" CornerRadius="12" Padding="13" Margin="0,7,0,0">
+              <StackPanel>
+                <TextBlock Text="PRIVACY & BACKUP" FontSize="13" Foreground="White" FontWeight="SemiBold" Margin="0,0,0,6" />
+                <TextBlock Text="Your logs and goals stay on this phone and work offline. Use Export on the top bar to save a CSV backup. Removing the app may remove its local data." FontSize="12" Foreground="#FF9CB0C8" TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </PivotItem>
+      <PivotItem Header="History">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="14,4,14,22">
+            <TextBlock Text="RECENT LOGS" FontSize="14" Foreground="#FF5AE6C0" FontWeight="SemiBold" Margin="0,0,0,8" />
+            <TextBlock Text="Food and exercise entries from recent days appear here. Step totals are tracked separately." FontSize="12" Foreground="#FF9CB0C8" TextWrapping="Wrap" Margin="0,0,0,8" />
+            <ListView x:Name="HistoryList" />
+          </StackPanel>
+        </ScrollViewer>
+      </PivotItem>
+    </Pivot>
+  </Grid>
+</Page>
