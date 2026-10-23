@@ -8,7 +8,7 @@ permissions:
   contents: write
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
       - uses: microsoft/setup-msbuild@v2
@@ -161,6 +161,7 @@ jobs:
           EndGlobal
           '@ | Set-Content (Join-Path $root 'PongoLumia.sln') -Encoding utf8
       - name: Build ARM app package
+        timeout-minutes: 5
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -170,6 +171,14 @@ jobs:
           if (-not $appx) { throw 'Build succeeded but no ARM .appx was produced.' }
           New-Item -ItemType Directory -Force out | Out-Null
           Copy-Item $appx.FullName out\Pongo-ARM-unsigned.appx
+      - name: Upload MSBuild diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pongo-MSBuild-Diagnostics
+          path: build.log
+          if-no-files-found: ignore
+          retention-days: 5
       - name: Sign package and collect dependencies
         shell: pwsh
         run: |
