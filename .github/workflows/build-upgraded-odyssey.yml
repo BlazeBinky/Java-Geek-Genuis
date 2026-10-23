@@ -1,0 +1,150 @@
+name: Build experimental upgraded Odyssey for AmigaOS 4
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - amigaos4-browser-ci
+    paths:
+      - ".github/workflows/build-upgraded-odyssey.yml"
+      - "scripts/apply_os4_modern_profile.py"
+      - "scripts/apply_os4_platform_compat.py"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compile patched Odyssey source for OS4 PowerPC
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+    steps:
+      - name: Check out build scripts
+        uses: actions/checkout@v4
+
+      - name: Install archive and binary tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes lhasa file zip
+
+      - name: Fetch pinned Odyssey source and known OS4 cross-build support
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-all-errors \
+            --output upstream.tar.gz \
+            https://github.com/AmigaLabs/OdysseyWebBrowser/archive/refs/tags/ODYSSEY_3_1_0.tar.gz
+          curl --fail --location --retry 3 --retry-all-errors \
+            --output os4-build-support.tar.gz \
+            https://github.com/AmigaLabs/OdysseyWebBrowser/archive/refs/heads/jaokim_os4_compile.tar.gz
+          mkdir -p upstream os4-build-support
+          tar -xzf upstream.tar.gz --strip-components=1 -C upstream
+          tar -xzf os4-build-support.tar.gz --strip-components=1 -C os4-build-support
+          mkdir -p upstream/cross-build
+          cp os4-build-support/cross-build/build_aos4 upstream/cross-build/build_aos4
+          cp os4-build-support/Source/cmake/AMIGAOS4.cmake upstream/Source/cmake/AMIGAOS4.cmake
+          chmod +x upstream/cross-build/build_aos4
+          python3 scripts/apply_os4_modern_profile.py upstream
+          python3 scripts/apply_os4_platform_compat.py upstream
+
+      - name: Get OS4 PPC toolchain and Odyssey dependency libraries
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOOLCHAIN_IMAGE=""
+          if docker pull jaokim/aos4-odyssey-build:20190313_2326; then
+            echo "Using published OS4 Odyssey builder image."
+          else
+            echo "Published image unavailable; building the documented environment."
+            docker build --tag odyssey-os4-builder os4-build-support
+            TOOLCHAIN_IMAGE="odyssey-os4-builder"
+          fi
+          if [ -z "$TOOLCHAIN_IMAGE" ]; then
+            TOOLCHAIN_IMAGE="jaokim/aos4-odyssey-build:20190313_2326"
+          fi
+          echo "TOOLCHAIN_IMAGE=$TOOLCHAIN_IMAGE" >> "$GITHUB_ENV"
+
+      - name: Compile the patched MUI browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            --volume "$GITHUB_WORKSPACE/upstream:/workdir" \
+            --workdir /workdir \
+            "$TOOLCHAIN_IMAGE" \
+            bash -lc 'set -euo pipefail; if ! perl -MJSON::PP -MFindBin -e "1" >/dev/null 2>&1; then printf "deb http://archive.ubuntu.com/ubuntu xenial main universe multiverse\\ndeb http://archive.ubuntu.com/ubuntu xenial-updates main universe multiverse\\ndeb http://security.ubuntu.com/ubuntu xenial-security main universe multiverse\\n" >/tmp/os4-sources.list; apt-get -o Dir::Etc::sourcelist=/tmp/os4-sources.list -o Dir::Etc::sourceparts=- update; apt-get -o Dir::Etc::sourcelist=/tmp/os4-sources.list -o Dir::Etc::sourceparts=- install --yes perl-modules-5.22; fi; perl -MJSON::PP -MFindBin -e "1"; cd cross-build; ./build_aos4; make -j2'
+
+      - name: Verify the compiled binary is native PowerPC
+        shell: bash
+        run: |
+          set -euo pipefail
+          find upstream/cross-build -type f \( -name OWB -o -name Odyssey \) -print0 \
+            | while IFS= read -r -d '' candidate; do file "$candidate"; done | tee binary-scan.txt
+          BUILT_BINARY=""
+          for candidate in upstream/cross-build/bin/OWB upstream/cross-build/bin/Odyssey; do
+            if [ -f "$candidate" ] && file "$candidate" | grep -Eiq 'ELF 32-bit MSB executable, PowerPC|PowerPC.*executable'; then
+              BUILT_BINARY="$candidate"
+              break
+            fi
+          done
+          if [ -z "$BUILT_BINARY" ]; then
+            echo "::error::Build did not produce the expected native PowerPC browser executable."
+            exit 1
+          fi
+          echo "BUILT_BINARY=$BUILT_BINARY" >> "$GITHUB_ENV"
+
+      - name: Prepare full install tree with patched executable
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-all-errors \
+            --output Odyssey_310.lha \
+            https://github.com/AmigaLabs/OdysseyWebBrowser/releases/download/ODYSSEY_3_1_0/Odyssey_310.lha
+          echo "797cb594e96590ff1b4c35337aabc370ccaff974f0df802f19bc4c2d8348fa22  Odyssey_310.lha" \
+            | sha256sum --check --strict
+          mkdir -p staging
+          (cd staging && lhasa x ../Odyssey_310.lha)
+          test -d staging/Odyssey
+          if [ -f staging/Odyssey/Odyssey ]; then
+            mv staging/Odyssey/Odyssey staging/Odyssey/Odyssey-Stock-3.1.0
+          fi
+          cp "$BUILT_BINARY" staging/Odyssey/Odyssey
+          cp tests/browser-feature-check.html staging/Odyssey/Browser-Feature-Check.html
+          cat > staging/Odyssey/UPGRADED-BUILD-INFO.txt <<'EOF'
+          Odyssey OS4 experimental source rebuild
+          Source tag: ODYSSEY_3_1_0
+          Target: AmigaOS 4.1 Update 3 / PowerPC / MUI
+
+          This executable was rebuilt from source with a conservative WebKit
+          feature profile: CSS scroll snapping, HTML datalist suggestions,
+          the HTML download attribute, viewport/device adaptation, and any
+          other options the checked-out source explicitly declares.
+
+          Features disabled by the upstream MUI port because of missing or
+          incomplete support (WebAssembly, WebCrypto, WebAudio, WebGL, Service
+          Workers) remain disabled. This is not a current Chromium/WebKit engine
+          and compatibility with all modern websites is not guaranteed.
+
+          This archive has passed compilation and file-format checks only.
+          Runtime validation still needs an actual AmigaOS 4.1 Update 3 system.
+          Keep a copy of the original Odyssey executable, supplied as
+          Odyssey-Stock-3.1.0, for rollback.
+          EOF
+
+      - name: Package executable and dependencies into ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip -1 -r OdysseyOS4-Modernized-Experimental.zip staging/Odyssey
+          unzip -t OdysseyOS4-Modernized-Experimental.zip
+          sha256sum OdysseyOS4-Modernized-Experimental.zip > OdysseyOS4-Modernized-Experimental.zip.sha256
+
+      - name: Upload experimental native OS4 build
+        uses: actions/upload-artifact@v4
+        with:
+          name: OdysseyOS4-Modernized-Experimental
+          path: |
+            OdysseyOS4-Modernized-Experimental.zip
+            OdysseyOS4-Modernized-Experimental.zip.sha256
+          if-no-files-found: error
+          retention-days: 30

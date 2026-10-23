@@ -1,0 +1,86 @@
+name: Package Odyssey 3.1.0 for AmigaOS 4
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - amigaos4-browser-ci
+    paths:
+      - ".github/workflows/odyssey-os4-build.yml"
+      - "odyssey-os4/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/odyssey-os4-build.yml"
+      - "odyssey-os4/**"
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Verify and package native OS4 executable
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out packaging instructions
+        uses: actions/checkout@v4
+
+      - name: Install LHA, ZIP and binary-inspection utilities
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes lhasa zip file
+
+      - name: Download pinned upstream release and verify SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-all-errors \
+            --output Odyssey_310.lha \
+            https://github.com/AmigaLabs/OdysseyWebBrowser/releases/download/ODYSSEY_3_1_0/Odyssey_310.lha
+          echo "797cb594e96590ff1b4c35337aabc370ccaff974f0df802f19bc4c2d8348fa22  Odyssey_310.lha" | sha256sum --check --strict
+
+      - name: Extract and verify PowerPC executable exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p staging
+          (cd staging && lhasa x ../Odyssey_310.lha)
+          find staging -type f -print0 | xargs -0 -r file > binary-scan.txt
+          if ! grep -Eiq 'PowerPC|powerpc|PPC' binary-scan.txt; then
+            echo "::error::No PowerPC binary was detected in the extracted Odyssey release."
+            exit 1
+          fi
+          if ! grep -Eiq 'ELF.*(executable|shared object)|AmigaOS.*executable|hunk' binary-scan.txt; then
+            echo "::error::The extracted tree did not contain a recognized native executable format."
+            exit 1
+          fi
+          cat > staging/READ-ME-FIRST.txt <<'EOF'
+          Odyssey 3.1.0 — native AmigaOS 4 / PowerPC package
+
+          Preserve the application folder structure and copy all extracted files
+          to your AmigaOS 4.1 Update 3 system before launching Odyssey.
+
+          This ZIP contains the upstream precompiled Odyssey 3.1.0 application.
+          It is a verified repackaging, not a new source compilation or a claim
+          that the old WebKit engine has modern-browser feature parity.
+
+          Upstream release:
+          https://github.com/AmigaLabs/OdysseyWebBrowser/releases/tag/ODYSSEY_3_1_0
+          EOF
+
+      - name: Create ZIP containing the executable and all support files
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip -1 -r Odyssey-OS4-3.1.0.zip staging
+          unzip -t Odyssey-OS4-3.1.0.zip
+
+      - name: Upload installable ZIP as a GitHub Actions artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Odyssey-OS4-3.1.0
+          path: Odyssey-OS4-3.1.0.zip
+          if-no-files-found: error
+          retention-days: 30
