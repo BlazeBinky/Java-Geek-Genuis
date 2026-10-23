@@ -62,12 +62,12 @@ jobs:
         run: |
           set -euo pipefail
           HOST_JSON_PP="$(perl -MJSON::PP -e 'print $INC{"JSON/PP.pm"}')"
-          HOST_PERL_LIB="$(dirname "$(dirname "$HOST_JSON_PP")")"
-          test -f "$HOST_PERL_LIB/JSON/PP.pm"
+          mkdir -p "$GITHUB_WORKSPACE/host-perl-lib/JSON"
+          cp "$HOST_JSON_PP" "$GITHUB_WORKSPACE/host-perl-lib/JSON/PP.pm"
           docker run --rm \
             --volume "$GITHUB_WORKSPACE/upstream:/workdir" \
-            --volume "$HOST_PERL_LIB:/host-perl-stdlib:ro" \
-            --env PERL5LIB=/host-perl-stdlib \
+            --volume "$GITHUB_WORKSPACE/host-perl-lib:/host-perl-lib:ro" \
+            --env PERL5LIB=/host-perl-lib \
             --workdir /workdir \
             "$TOOLCHAIN_IMAGE" \
             bash -lc 'set -euo pipefail; perl -MJSON::PP -e "1"; cd cross-build; ./build_aos4; make -j2'
