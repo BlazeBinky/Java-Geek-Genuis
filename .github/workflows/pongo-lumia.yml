@@ -107,7 +107,109 @@ jobs:
           '@ | Set-Content (Join-Path $root 'Package.appxmanifest') -Encoding utf8
           # Bind compilation to the exact Windows SDK union metadata version installed on this runner.
           $unionRoot = Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'Windows Kits\10\UnionMetadata'
-          $sdk = Get-ChildItem $unionRoot -Directory -ErrorAction SilentlyContinue | Where-Object { Test-Path (Join-Path $_.FullName 'Windows.winmd') } | Sort-Object Name -Descending | Select-Object -First 1
+          $sdk = Get-ChildItem $unionRoot -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d+\.\d+\.\d+\.\d+
+          if (-not $sdk) { throw "No Windows.winmd metadata found under $unionRoot" }
+          $winmd = Join-Path $sdk.FullName 'Windows.winmd'
+          $projPath = Join-Path $root 'PongoLumia.csproj'
+          $projText = Get-Content $projPath -Raw
+          $projText = $projText.Replace('10.0.19041.0</TargetPlatformVersion>', ($sdk.Name + '</TargetPlatformVersion>'))
+          $projText = $projText.Replace('__PONGO_WINDOWS_WINMD__', $winmd)
+          [IO.File]::WriteAllText($projPath, $projText, [Text.UTF8Encoding]::new($false))
+          Write-Host "Using UWP target SDK $($sdk.Name) and metadata $winmd"
+          Add-Type -AssemblyName System.Drawing
+          function Make-Logo([int]$size,[string]$path){
+            $bmp=[System.Drawing.Bitmap]::new($size,$size);$g=[System.Drawing.Graphics]::FromImage($bmp);$g.SmoothingMode=[System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+            $g.Clear([System.Drawing.Color]::FromArgb(11,16,32))
+            $white=[System.Drawing.SolidBrush]::new([System.Drawing.Color]::White)
+            $black=[System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(17,22,33))
+            $belly=[System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(239,246,255))
+            $orange=[System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(255,166,45))
+            $blue=[System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(35,143,224))
+            $eye=[System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(10,16,28))
+            $g.FillEllipse($blue,$size*.12,$size*.12,$size*.76,$size*.76)
+            $g.FillEllipse($black,$size*.28,$size*.15,$size*.46,$size*.68)
+            $g.FillEllipse($belly,$size*.37,$size*.43,$size*.28,$size*.32)
+            $g.FillEllipse($white,$size*.36,$size*.29,$size*.105,$size*.12);$g.FillEllipse($white,$size*.535,$size*.29,$size*.105,$size*.12)
+            $g.FillEllipse($eye,$size*.398,$size*.325,$size*.05,$size*.06);$g.FillEllipse($eye,$size*.573,$size*.325,$size*.05,$size*.06)
+            $beak=[System.Drawing.Point[]]@([System.Drawing.Point]::new([int]($size*.47),[int]($size*.405)),[System.Drawing.Point]::new([int]($size*.53),[int]($size*.405)),[System.Drawing.Point]::new([int]($size*.50),[int]($size*.465)))
+            $g.FillPolygon($orange,$beak)
+            $g.FillEllipse($orange,$size*.36,$size*.79,$size*.13,$size*.065);$g.FillEllipse($orange,$size*.51,$size*.79,$size*.13,$size*.065)
+            $bmp.Save($path,[System.Drawing.Imaging.ImageFormat]::Png)
+            $white.Dispose();$black.Dispose();$belly.Dispose();$orange.Dispose();$blue.Dispose();$eye.Dispose();$g.Dispose();$bmp.Dispose()
+          }
+          Make-Logo 50 (Join-Path $root 'Assets\StoreLogo.png');Make-Logo 150 (Join-Path $root 'Assets\Square150x150Logo.png');Make-Logo 44 (Join-Path $root 'Assets\Square44x44Logo.png')
+          $wide=[System.Drawing.Bitmap]::new(310,150);$g=[System.Drawing.Graphics]::FromImage($wide);$g.Clear([System.Drawing.Color]::FromArgb(11,16,32));$g.DrawImage([System.Drawing.Image]::FromFile((Join-Path $root 'Assets\Square150x150Logo.png')),35,0,150,150);$wide.Save((Join-Path $root 'Assets\Wide310x150Logo.png'),[System.Drawing.Imaging.ImageFormat]::Png);$g.Dispose();$wide.Dispose()
+          $splash=[System.Drawing.Bitmap]::new(620,300);$g=[System.Drawing.Graphics]::FromImage($splash);$g.Clear([System.Drawing.Color]::FromArgb(11,16,32));$g.DrawImage([System.Drawing.Image]::FromFile((Join-Path $root 'Assets\Square150x150Logo.png')),235,75,150,150);$splash.Save((Join-Path $root 'Assets\SplashScreen.png'),[System.Drawing.Imaging.ImageFormat]::Png);$g.Dispose();$splash.Dispose()
+          @'
+          Microsoft Visual Studio Solution File, Format Version 12.00
+          # Visual Studio Version 17
+          VisualStudioVersion = 17.0.31903.59
+          MinimumVisualStudioVersion = 10.0.40219.1
+          Project("{A5A43C5B-DE2A-4C0C-9213-0A381AF9435A}") = "PongoLumia", "PongoLumia.csproj", "{C27E06E4-47B0-4D93-A0C0-4A7AA9D7A55C}"
+          EndProject
+          Global
+            GlobalSection(SolutionConfigurationPlatforms) = preSolution
+              Debug|ARM = Debug|ARM
+              Release|ARM = Release|ARM
+            EndGlobalSection
+            GlobalSection(ProjectConfigurationPlatforms) = postSolution
+              {C27E06E4-47B0-4D93-A0C0-4A7AA9D7A55C}.Debug|ARM.ActiveCfg = Debug|ARM
+              {C27E06E4-47B0-4D93-A0C0-4A7AA9D7A55C}.Debug|ARM.Build.0 = Debug|ARM
+              {C27E06E4-47B0-4D93-A0C0-4A7AA9D7A55C}.Release|ARM.ActiveCfg = Release|ARM
+              {C27E06E4-47B0-4D93-A0C0-4A7AA9D7A55C}.Release|ARM.Build.0 = Release|ARM
+            EndGlobalSection
+          EndGlobal
+          '@ | Set-Content (Join-Path $root 'PongoLumia.sln') -Encoding utf8
+      - name: Build ARM app package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          msbuild PongoLumia\PongoLumia.csproj /restore /m /v:minimal /p:Configuration=Release /p:Platform=ARM /p:UseDotNetNativeToolchain=false /p:AppxPackageSigningEnabled=false /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly '/flp:logfile=build.log;verbosity=normal'
+          if ($LASTEXITCODE -ne 0) { throw "ARM build failed with exit code $LASTEXITCODE" }
+          $appx = Get-ChildItem PongoLumia -Recurse -Filter '*.appx' | Where-Object { $_.FullName -notmatch '\\Dependencies\\|Symbols|TestCertificate' } | Select-Object -First 1
+          if (-not $appx) { throw 'Build succeeded but no ARM .appx was produced.' }
+          New-Item -ItemType Directory -Force out | Out-Null
+          Copy-Item $appx.FullName out\Pongo-ARM-unsigned.appx
+      - name: Sign package and collect dependencies
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $cert = New-SelfSignedCertificate -Type Custom -Subject 'CN=BlazeBinky' -KeyUsage DigitalSignature -FriendlyName 'Pongo Lumia test signing' -CertStoreLocation 'Cert:\CurrentUser\My' -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3','2.5.29.19={text}')
+          Export-Certificate -Cert $cert -FilePath out\Pongo-TestCertificate.cer | Out-Null
+          $pw = ConvertTo-SecureString "PongoDev-$env:GITHUB_RUN_ID" -AsPlainText -Force
+          Export-PfxCertificate -Cert $cert -FilePath out\temporary.pfx -Password $pw | Out-Null
+          $sdk = Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'Windows Kits\10\bin'
+          $sign = Get-ChildItem $sdk -Recurse -Filter signtool.exe | Where-Object { $_.FullName -match '\\x64\\' } | Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $sign) { throw 'SignTool not found in Windows SDK.' }
+          & $sign.FullName sign /fd SHA256 /f out\temporary.pfx /p "PongoDev-$env:GITHUB_RUN_ID" out\Pongo-ARM-unsigned.appx
+          if ($LASTEXITCODE -ne 0) { throw 'Package signing failed.' }
+          Move-Item out\Pongo-ARM-unsigned.appx out\Pongo-ARM.appx -Force
+          Remove-Item out\temporary.pfx -Force
+          New-Item -ItemType Directory -Force out\Dependencies | Out-Null
+          $deps = Get-ChildItem PongoLumia -Recurse -Filter '*.appx' | Where-Object { $_.FullName -match '\\Dependencies\\' }
+          foreach ($dep in $deps) { if ($dep.Name -match 'ARM|CoreRuntime|VCLibs') { Copy-Item $dep.FullName out\Dependencies -Force } }
+          @'
+          Pongo Lumia Edition — ARM test package
+          
+          Files:
+          - Pongo-ARM.appx: signed test package
+          - Pongo-TestCertificate.cer: public self-signed test certificate
+          - Dependencies/: runtime dependencies emitted by the build, if any
+          
+          Install with a Windows 10 Mobile deployment tool on a developer-unlocked compatible phone. If prompted, trust the included certificate on your own device. This is a test-signed sideload package, not a Store-signed release.
+          
+          Features in this initial build: voice dictation through Windows speech UI, spoken replies, time/date, local notes, website shortcuts, and web search.
+          
+          Limitations: This is a separate app named Pongo; it cannot replace Microsoft's protected system Cortana package, system search button, or always-on wake word. Test on the actual Lumia before relying on it. If the package requires runtime dependencies not emitted by this SDK configuration, install the ARM dependencies listed in the ZIP.
+          '@ | Set-Content out\INSTALL.txt -Encoding utf8
+          Compress-Archive -Path out\* -DestinationPath Pongo-Lumia-ARM-Install.zip -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pongo-Lumia-ARM-Install-ZIP
+          path: Pongo-Lumia-ARM-Install.zip
+          if-no-files-found: error
+          retention-days: 30
+ -and (Test-Path (Join-Path $_.FullName 'Windows.winmd')) } | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
           if (-not $sdk) { throw "No Windows.winmd metadata found under $unionRoot" }
           $winmd = Join-Path $sdk.FullName 'Windows.winmd'
           $projPath = Join-Path $root 'PongoLumia.csproj'
