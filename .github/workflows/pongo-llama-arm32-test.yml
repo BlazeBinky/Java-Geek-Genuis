@@ -30,6 +30,7 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $path = 'llama.cpp/src/llama-mmap.cpp'
           $source = Get-Content $path -Raw
+          $source = $source.Replace('#include <windows.h>', '#include <windows.h>' + [Environment]::NewLine + '#include <memoryapi.h>')
           $source = $source.Replace('CreateFileMappingA(hFile, NULL, PAGE_READONLY, 0, 0, NULL)', 'CreateFileMappingFromApp(hFile, NULL, PAGE_READONLY, 0, NULL)')
           $source = $source.Replace('MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0)', 'MapViewOfFileFromApp(hMapping, FILE_MAP_READ, 0, 0)')
           $source = $source.Replace('#if _WIN32_WINNT >= 0x602', '#if _WIN32_WINNT >= 0x602 && WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)')
@@ -58,7 +59,7 @@ jobs:
           $cmake = 'llama.cpp/CMakeLists.txt'
           @'
           add_library(PongoLlmNative SHARED "${CMAKE_SOURCE_DIR}/../PongoSource/PongoLlmNative.cpp")
-          target_link_libraries(PongoLlmNative PRIVATE llama)
+          target_link_libraries(PongoLlmNative PRIVATE llama OneCore)
           target_include_directories(PongoLlmNative PRIVATE "${CMAKE_SOURCE_DIR}/include")
           set_target_properties(PongoLlmNative PROPERTIES OUTPUT_NAME PongoLlmNative)
           '@ | Add-Content $cmake -Encoding utf8
