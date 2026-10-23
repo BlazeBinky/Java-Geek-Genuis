@@ -1,0 +1,10 @@
+<Application
+    x:Class="FitnessTracker.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <SolidColorBrush x:Key="AccentBrush" Color="#FF5AE6C0" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
