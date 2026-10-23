@@ -26,6 +26,8 @@ def patch_toolchain(path: Path) -> None:
             additions.append("-DWTF_PLATFORM_MUI=1")
         if "-DUSE_PTHREADS=1" not in prefix:
             additions.append("-DUSE_PTHREADS=1")
+        if "-D_POSIX_C_SOURCE=200809L" not in prefix:
+            additions.append("-D_POSIX_C_SOURCE=200809L")
         if additions:
             text = text[:match.start(1)] + prefix + " " + " ".join(additions) + text[match.end(1):]
     path.write_text(text, encoding="utf-8")
@@ -61,11 +63,13 @@ def patch_build_script(path: Path) -> None:
         "    -DCMAKE_CXX_FLAGS=\"-D__USE_INLINE__ -Wno-expansion-to-defined -D_GNU_SOURCE "
         "-DWTF_PLATFORM_MUI=1 -DUSE_PTHREADS=1 -I/usr/ppc-amigaos/SDK/MUI/C/include/\" \\\n"
     )
-    if "-DUSE_PTHREADS=1" in text:
-        return
-    if anchor not in text:
-        raise ValueError(f"CMAKE_SYSTEM_PROCESSOR line not found in {path}")
-    path.write_text(text.replace(anchor, anchor + addition, 1), encoding="utf-8")
+    if "-DUSE_PTHREADS=1" not in text:
+        if anchor not in text:
+            raise ValueError(f"CMAKE_SYSTEM_PROCESSOR line not found in {path}")
+        text = text.replace(anchor, anchor + addition, 1)
+    if "-D_POSIX_C_SOURCE=200809L" not in text:
+        text = text.replace("-DUSE_PTHREADS=1", "-DUSE_PTHREADS=1 -D_POSIX_C_SOURCE=200809L")
+    path.write_text(text, encoding="utf-8")
 
 
 def main() -> int:
