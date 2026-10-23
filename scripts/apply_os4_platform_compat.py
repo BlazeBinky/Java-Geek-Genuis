@@ -50,6 +50,24 @@ def patch_registers(path: Path) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+
+
+def patch_build_script(path: Path) -> None:
+    text = path.read_text(encoding="utf-8")
+    anchor = "    -DCMAKE_SYSTEM_PROCESSOR=ppc \\\n"
+    addition = (
+        "    -DCMAKE_C_FLAGS=\"-D__USE_INLINE__ -Wno-expansion-to-defined -D_GNU_SOURCE "
+        "-DWTF_PLATFORM_MUI=1 -DUSE_PTHREADS=1 -I/usr/ppc-amigaos/SDK/MUI/C/include/\" \\\n"
+        "    -DCMAKE_CXX_FLAGS=\"-D__USE_INLINE__ -Wno-expansion-to-defined -D_GNU_SOURCE "
+        "-DWTF_PLATFORM_MUI=1 -DUSE_PTHREADS=1 -I/usr/ppc-amigaos/SDK/MUI/C/include/\" \\\n"
+    )
+    if "-DUSE_PTHREADS=1" in text:
+        return
+    if anchor not in text:
+        raise ValueError(f"CMAKE_SYSTEM_PROCESSOR line not found in {path}")
+    path.write_text(text.replace(anchor, anchor + addition, 1), encoding="utf-8")
+
+
 def main() -> int:
     if len(sys.argv) != 2:
         print(f"Usage: {Path(sys.argv[0]).name} UPSTREAM_SOURCE_DIR", file=sys.stderr)
@@ -57,11 +75,13 @@ def main() -> int:
     root = Path(sys.argv[1]).resolve()
     toolchain = root / "Source/cmake/AMIGAOS4.cmake"
     registers = root / "Source/WTF/wtf/PlatformRegisters.h"
+    build_script = root / "cross-build/build_aos4"
     try:
-        if not toolchain.is_file() or not registers.is_file():
-            raise FileNotFoundError("missing OS4 toolchain file or PlatformRegisters.h")
+        if not toolchain.is_file() or not registers.is_file() or not build_script.is_file():
+            raise FileNotFoundError("missing OS4 toolchain, build script or PlatformRegisters.h")
         patch_toolchain(toolchain)
         patch_registers(registers)
+        patch_build_script(build_script)
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
