@@ -376,7 +376,7 @@ jobs:
           @'
           <?xml version="1.0" encoding="utf-8"?>
           <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" IgnorableNamespaces="uap mp">
-            <Identity Name="BlazeBinky.PongoLumia" Publisher="CN=BlazeBinky" Version="1.0.0.0"/>
+            <Identity Name="BlazeBinky.PongoLumia" Publisher="CN=BlazeBinky" Version="1.1.0.0"/>
             <mp:PhoneIdentity PhoneProductId="5e0b48db-28bd-4e21-9db5-30b5d071a2b1" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
             <Properties><DisplayName>Pongo</DisplayName><PublisherDisplayName>BlazeBinky</PublisherDisplayName><Logo>Assets\StoreLogo.png</Logo></Properties>
             <Dependencies><TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.14393.0" MaxVersionTested="10.0.15063.0"/></Dependencies>
