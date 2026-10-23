@@ -11,8 +11,8 @@
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
       <StackPanel Grid.Row="0" Margin="2,3,2,8">
         <TextBlock Text="Download a real 135M-parameter language model. Once installed, replies are generated on this phone with no AI API." Foreground="#FFBACBE2" FontSize="13" TextWrapping="Wrap"/>
-        <TextBlock Text="First setup needs Wi-Fi and about 105 MB of storage. You can still use the tiny offline helper without it." Foreground="#FF6EBBFF" FontSize="12" TextWrapping="Wrap" Margin="0,3,0,5"/>
-        <Button x:Name="LocalModelButton" Content="Get local AI model (~105 MB)" Click="LocalModel_Click" HorizontalAlignment="Stretch" Margin="0,0,0,2"/>
+        <TextBlock Text="First setup needs Wi-Fi and about 94 MB of storage. You can still use the tiny offline helper without it." Foreground="#FF6EBBFF" FontSize="12" TextWrapping="Wrap" Margin="0,3,0,5"/>
+        <Button x:Name="LocalModelButton" Content="Get local AI model (~94 MB)" Click="LocalModel_Click" HorizontalAlignment="Stretch" Margin="0,0,0,2"/>
       </StackPanel>
       <TextBox x:Name="Conversation" Grid.Row="1" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="180" Background="#FF11192B" Foreground="#FFE7F1FF" FontSize="15" BorderThickness="0" Padding="12" IsSpellCheckEnabled="False" />
       <StackPanel Grid.Row="2" Margin="0,7,0,5">
