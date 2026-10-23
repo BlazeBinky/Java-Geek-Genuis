@@ -18,6 +18,12 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          @'
+          #include "ggml-backend-dl.h"
+          dl_handle * dl_load_library(const fs::path & path) { (void)path; return nullptr; }
+          void * dl_get_sym(dl_handle * handle, const char * name) { (void)handle; (void)name; return nullptr; }
+          const char * dl_error() { return "Dynamic backends are disabled in the UWP ARM32 build."; }
+          '@ | Set-Content 'llama.cpp/ggml/src/ggml-backend-dl.cpp' -Encoding utf8
           $path = 'llama.cpp/src/llama-mmap.cpp'
           $source = Get-Content $path -Raw
           $source = $source.Replace('#include <windows.h>', '#include <windows.h>' + [Environment]::NewLine + '#include <memoryapi.h>')
