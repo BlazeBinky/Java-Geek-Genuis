@@ -195,21 +195,51 @@ jobs:
           Move-Item out\Pongo-ARM-unsigned.appx out\Pongo-ARM.appx -Force
           Remove-Item out\temporary.pfx -Force
           New-Item -ItemType Directory -Force out\Dependencies | Out-Null
-          $deps = Get-ChildItem PongoLumia -Recurse -Filter '*.appx' | Where-Object { $_.FullName -match '\\Dependencies\\' }
-          foreach ($dep in $deps) { if ($dep.Name -match 'ARM|CoreRuntime|VCLibs') { Copy-Item $dep.FullName out\Dependencies -Force } }
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $deps = Get-ChildItem PongoLumia -Recurse -Filter '*.appx' -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match '\\Dependencies\\' }
+          foreach ($dep in $deps) {
+            $archive = $null
+            $reader = $null
+            $arch = ''
+            $pkgName = ''
+            try {
+              $archive = [System.IO.Compression.ZipFile]::OpenRead($dep.FullName)
+              $entry = $archive.GetEntry('AppxManifest.xml')
+              if (-not $entry) { continue }
+              $reader = [System.IO.StreamReader]::new($entry.Open())
+              [xml]$depManifest = $reader.ReadToEnd()
+              $identity = $depManifest.SelectSingleNode("//*[local-name()='Package']/*[local-name()='Identity']")
+              if (-not $identity) { continue }
+              $arch = $identity.GetAttribute('ProcessorArchitecture')
+              $pkgName = $identity.GetAttribute('Name')
+            }
+            finally {
+              if ($reader) { $reader.Dispose() }
+              if ($archive) { $archive.Dispose() }
+            }
+            if ($arch -eq 'arm' -or $arch -eq 'neutral') {
+              Copy-Item $dep.FullName (Join-Path out\Dependencies $dep.Name) -Force
+              Write-Host "Included dependency $pkgName ($arch): $($dep.Name)"
+            }
+            else {
+              Write-Host "Skipped non-ARM dependency $pkgName ($arch): $($dep.Name)"
+            }
+          }
+          if (-not (Test-Path (Join-Path out\Dependencies 'Microsoft.NET.CoreRuntime.1.1.appx'))) { throw 'ARM .NET Core Runtime 1.1 dependency missing from output.' }
+          if (-not (Test-Path (Join-Path out\Dependencies 'Microsoft.VCLibs.ARM.14.00.appx'))) { throw 'ARM Microsoft VCLibs dependency missing from output.' }
           @'
           Pongo Lumia Edition — ARM test package
           
           Files:
           - Pongo-ARM.appx: signed test package
           - Pongo-TestCertificate.cer: public self-signed test certificate
-          - Dependencies/: runtime dependencies emitted by the build, if any
+          - Dependencies/: ARM/neutral runtime dependencies only
           
           Install with a Windows 10 Mobile deployment tool on a developer-unlocked compatible phone. If prompted, trust the included certificate on your own device. This is a test-signed sideload package, not a Store-signed release.
           
           Features in this initial build: voice dictation through Windows speech UI, spoken replies, time/date, local notes, website shortcuts, and web search.
           
-          Limitations: This is a separate app named Pongo; it cannot replace Microsoft's protected system Cortana package, system search button, or always-on wake word. Test on the actual Lumia before relying on it. If the package requires runtime dependencies not emitted by this SDK configuration, install the ARM dependencies listed in the ZIP.
+          Limitations: This is a separate app named Pongo; it cannot replace Microsoft's protected system Cortana package, system search button, or always-on wake word. Test on the actual Lumia before relying on it. Install the ARM dependencies in Dependencies before installing Pongo. Do not install x86, x64, or ARM64 dependencies on a Lumia 950.
           '@ | Set-Content out\INSTALL.txt -Encoding utf8
           Compress-Archive -Path out\* -DestinationPath Pongo-Lumia-ARM-Install.zip -Force
       - uses: actions/upload-artifact@v4
