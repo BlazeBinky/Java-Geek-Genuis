@@ -47,7 +47,7 @@ jobs:
           set -euo pipefail
           mkdir -p staging
           (cd staging && lhasa x ../Odyssey_310.lha)
-          find staging -type f -print0 | xargs -0 -r file | tee binary-scan.txt
+          find staging -type f -print0 | xargs -0 -r file > binary-scan.txt
           if ! grep -Eiq 'PowerPC|powerpc|PPC' binary-scan.txt; then
             echo "::error::No PowerPC binary was detected in the extracted Odyssey release."
             exit 1
@@ -74,7 +74,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          zip -9 -r Odyssey-OS4-3.1.0.zip staging
+          zip -1 -r Odyssey-OS4-3.1.0.zip staging
           unzip -t Odyssey-OS4-3.1.0.zip
 
       - name: Upload installable ZIP as a GitHub Actions artifact
