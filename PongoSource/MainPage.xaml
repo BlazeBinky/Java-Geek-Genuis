@@ -1,0 +1,56 @@
+<Page x:Class="PongoLumia.MainPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Background="#FF0B1020">
+  <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <Grid Padding="9,7">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="68"/><ColumnDefinition Width="82"/></Grid.ColumnDefinitions>
+      <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Image Width="38" Height="38" Source="Assets/Square150x150Logo.png" Margin="0,0,8,0"/><StackPanel VerticalAlignment="Center"><TextBlock Text="PONGO" Foreground="White" FontSize="21" FontWeight="SemiBold"/><TextBlock Text="Offline penguin AI" Foreground="#FF9DB1D1" FontSize="11"/></StackPanel></StackPanel>
+      <Button Grid.Column="1" Content="Chat" Click="ShowChat_Click" Margin="2,0" VerticalAlignment="Center"/>
+      <Button Grid.Column="2" Content="Code Lab" Click="ShowCode_Click" Margin="2,0" VerticalAlignment="Center"/>
+    </Grid>
+    <Grid Grid.Row="1" x:Name="ChatPanel" Margin="10,0">
+      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+      <StackPanel Grid.Row="0" Margin="2,3,2,8">
+        <TextBlock Text="Your tiny local brain. No AI API. No account. Works offline." Foreground="#FFBACBE2" FontSize="13" TextWrapping="Wrap"/>
+        <TextBlock Text="Ask a question, try a coding topic, or teach Pongo a fact." Foreground="#FF6EBBFF" FontSize="12" TextWrapping="Wrap" Margin="0,3,0,0"/>
+      </StackPanel>
+      <TextBox x:Name="Conversation" Grid.Row="1" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="180" Background="#FF11192B" Foreground="#FFE7F1FF" FontSize="15" BorderThickness="0" Padding="12" IsSpellCheckEnabled="False" />
+      <StackPanel Grid.Row="2" Margin="0,7,0,5">
+        <TextBlock x:Name="Status" Text="Offline brain ready" Foreground="#FF8CA6C8" FontSize="12" TextWrapping="Wrap" Margin="2,0,2,4"/>
+        <TextBlock Text="Try: teach what is redstone =&gt; Redstone is Minecraft's electrical logic system." Foreground="#FF8CA6C8" FontSize="11" TextWrapping="Wrap" Margin="2,0,2,0"/>
+      </StackPanel>
+    </Grid>
+    <Grid Grid.Row="1" x:Name="CodePanel" Visibility="Collapsed" Margin="10,0">
+      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="2.2*"/><RowDefinition Height="Auto"/><RowDefinition Height="1.25*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+      <StackPanel Grid.Row="0" Margin="1,3,1,6">
+        <TextBlock Text="PONGO CODE LAB" Foreground="White" FontSize="20" FontWeight="SemiBold"/>
+        <TextBlock Text="Write code offline. HTML / JavaScript can run in the local preview. Other languages can be edited and saved." Foreground="#FFBACBE2" FontSize="12" TextWrapping="Wrap" Margin="0,2,0,5"/>
+        <ComboBox x:Name="LanguageBox" SelectedIndex="0" SelectionChanged="Language_Changed" HorizontalAlignment="Stretch">
+          <ComboBoxItem Content="HTML / JavaScript"/><ComboBoxItem Content="Python"/><ComboBoxItem Content="C#"/><ComboBoxItem Content="XAML"/>
+        </ComboBox>
+      </StackPanel>
+      <TextBox x:Name="CodeEditor" Grid.Row="1" AcceptsReturn="True" TextWrapping="NoWrap" IsSpellCheckEnabled="False" FontFamily="Consolas" FontSize="13" MinHeight="130" Background="#FF11192B" Foreground="#FFE7F1FF" BorderBrush="#FF2C4263" BorderThickness="1" Padding="8" />
+      <Grid Grid.Row="2" Margin="0,5,0,5">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <Button Content="Example" Click="Example_Click" Margin="0,0,3,0"/><Button Grid.Column="1" Content="Run / Preview" Click="RunCode_Click" Margin="2,0"/><Button Grid.Column="2" Content="Save Code" Click="SaveCode_Click" Margin="3,0,0,0"/>
+      </Grid>
+      <Grid Grid.Row="3">
+        <TextBox x:Name="CodeOutput" TextWrapping="Wrap" AcceptsReturn="True" IsReadOnly="True" FontFamily="Consolas" FontSize="12" Background="#FF11192B" Foreground="#FFBACBE2" BorderThickness="0" Padding="8" />
+        <WebView x:Name="CodePreview" Visibility="Collapsed" />
+      </Grid>
+      <StackPanel Grid.Row="4" Margin="0,5,0,2">
+        <Button Content="Create a starter .appx project" Click="CreateAppProject_Click"/>
+        <TextBlock x:Name="CodeStatus" Text="Your code and lessons stay on this phone." Foreground="#FF8CA6C8" FontSize="11" TextWrapping="Wrap" Margin="2,4,2,0"/>
+      </StackPanel>
+    </Grid>
+    <StackPanel Grid.Row="2" x:Name="ChatComposer" Background="#FF11192B" Padding="8,7">
+      <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="48"/><ColumnDefinition Width="48"/></Grid.ColumnDefinitions>
+        <TextBox x:Name="Prompt" PlaceholderText="Chat with Pongo offline…" FontSize="16" KeyDown="Prompt_KeyDown" VerticalContentAlignment="Center"/>
+        <Button Grid.Column="1" Content="➤" Click="Send_Click" Margin="4,0,0,0"/><Button Grid.Column="2" Content="🎙" Click="Listen_Click" Margin="4,0,0,0"/>
+      </Grid>
+      <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <Button Content="Time" Click="Time_Click" Margin="0,0,3,0"/><Button Grid.Column="1" Content="Notes" Click="Notes_Click" Margin="2,0"/><Button Grid.Column="2" Content="Web search" Click="Search_Click" Margin="3,0,0,0"/>
+      </Grid>
+    </StackPanel>
+    <MediaElement x:Name="Speech" Width="1" Height="1" Opacity="0" AutoPlay="False"/>
+  </Grid>
+</Page>
