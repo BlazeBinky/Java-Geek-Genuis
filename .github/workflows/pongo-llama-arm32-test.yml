@@ -24,17 +24,47 @@ jobs:
           void * dl_get_sym(dl_handle * handle, const char * name) { (void)handle; (void)name; return nullptr; }
           const char * dl_error() { return "Dynamic backends are disabled in the UWP ARM32 build."; }
           '@ | Set-Content llama.cpp/ggml/src/ggml-backend-dl.cpp -Encoding utf8
+      - name: Patch desktop-only memory APIs for UWP ARM32
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $path = 'llama.cpp/src/llama-mmap.cpp'
+          $source = Get-Content $path -Raw
+          $source = $source.Replace('CreateFileMappingA(hFile, NULL, PAGE_READONLY, 0, 0, NULL)', 'CreateFileMappingFromApp(hFile, NULL, PAGE_READONLY, 0, NULL)')
+          $source = $source.Replace('MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0)', 'MapViewOfFileFromApp(hMapping, FILE_MAP_READ, 0, 0)')
+          $mlockStart = $source.IndexOf('// llama_mlock')
+          if ($mlockStart -lt 0) { throw 'Could not find llama_mlock implementation.' }
+          $before = $source.Substring(0, $mlockStart)
+          $after = $source.Substring($mlockStart)
+          $branch = $after.IndexOf('#elif defined(_WIN32)')
+          if ($branch -lt 0) { throw 'Could not find Windows mlock implementation.' }
+          $branchText = $after.Substring($branch).Replace('#elif defined(_WIN32)', '#elif defined(_WIN32) && WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)')
+          $after = $after.Substring(0, $branch) + $branchText
+          $source = $before + $after
+          [IO.File]::WriteAllText((Resolve-Path $path), $source, [Text.UTF8Encoding]::new($false))
+          Write-Host 'Patched Windows Store memory mapping and disabled unsupported memory locking.'
       - name: Configure Windows Store ARM32
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          cmake -S llama.cpp -B build-llama -G "Visual Studio 17 2022" -A "ARM,version=10.0.22621.0" -DCMAKE_SYSTEM_NAME=WindowsStore '-DCMAKE_SYSTEM_VERSION=10.0.22621.0' '-DCMAKE_SYSTEM_PROCESSOR=ARM' -DBUILD_SHARED_LIBS=OFF -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DGGML_BACKEND_DL=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_CURL=OFF
+          cmake -S llama.cpp -B build-llama -G "Visual Studio 17 2022" -A "ARM,version=10.0.22621.0" -DCMAKE_SYSTEM_NAME=WindowsStore '-DCMAKE_SYSTEM_VERSION=10.0.22621.0' '-DCMAKE_SYSTEM_PROCESSOR=ARM' '-DCMAKE_CXX_FLAGS=/D_WIN32_WINNT=0x0601' -DBUILD_SHARED_LIBS=OFF -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DGGML_BACKEND_DL=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_CURL=OFF
           if ($LASTEXITCODE -ne 0) { throw "llama.cpp ARM32 configure failed: $LASTEXITCODE" }
-      - name: Build static llama library for ARM32
+      - name: Add local Pongo inference DLL target
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $cmake = 'llama.cpp/CMakeLists.txt'
+          @'
+          add_library(PongoLlmNative SHARED "${CMAKE_SOURCE_DIR}/../PongoSource/PongoLlmNative.cpp")
+          target_link_libraries(PongoLlmNative PRIVATE llama)
+          target_include_directories(PongoLlmNative PRIVATE "${CMAKE_SOURCE_DIR}/include")
+          set_target_properties(PongoLlmNative PROPERTIES OUTPUT_NAME PongoLlmNative)
+          '@ | Add-Content $cmake -Encoding utf8
+      - name: Build static llama library and Pongo inference DLL for ARM32
         timeout-minutes: 10
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          cmake --build build-llama --config Release --target llama -- /m
-          if ($LASTEXITCODE -ne 0) { throw "llama.cpp ARM32 compile failed: $LASTEXITCODE" }
-          Get-ChildItem build-llama -Recurse -Filter "*llama*.lib" | Select-Object FullName,Length | Format-Table -AutoSize
+          cmake --build build-llama --config Release --target PongoLlmNative -- /m
+          if ($LASTEXITCODE -ne 0) { throw "llama.cpp / Pongo ARM32 compile failed: $LASTEXITCODE" }
+          Get-ChildItem build-llama -Recurse -Include "PongoLlmNative.dll","*llama*.lib","*ggml*.lib" | Select-Object FullName,Length | Format-Table -AutoSize
