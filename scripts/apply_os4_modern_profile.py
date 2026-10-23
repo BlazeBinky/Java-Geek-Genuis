@@ -28,11 +28,11 @@ def apply(source: Path) -> tuple[list[str], list[str]]:
         raise FileNotFoundError("expected Source/cmake/OptionsMUI.cmake and WebKitFeatures.cmake")
     options_text = opts.read_text(encoding="utf-8")
     feature_text = features.read_text(encoding="utf-8")
-    declared = set(re.findall(r"WEBKIT_OPTION_DEFINE\\((ENABLE_[A-Z0-9_]+)\\b", feature_text))
+    declared = set(re.findall(r"WEBKIT_OPTION_DEFINE\((ENABLE_[A-Z0-9_]+)\b", feature_text))
 
     # Strip our former generated block first, making this safe to re-run.
     options_text = re.sub(
-        r"(?m)^" + re.escape(MARKER) + r"\\n(?:(?!^WEBKIT_OPTION_END\\(\\)).*\\n)*",
+        r"(?m)^" + re.escape(MARKER) + r"\n(?:(?!^WEBKIT_OPTION_END\(\)).*\n)*",
         "",
         options_text,
     )
@@ -45,9 +45,9 @@ def apply(source: Path) -> tuple[list[str], list[str]]:
             continue
         line = f"WEBKIT_OPTION_DEFAULT_PORT_VALUE({name} PRIVATE ON)"
         pattern = re.compile(
-            r"(?m)^\\s*WEBKIT_OPTION_DEFAULT_PORT_VALUE\\("
+            r"(?m)^\s*WEBKIT_OPTION_DEFAULT_PORT_VALUE\("
             + re.escape(name)
-            + r"\\s+PRIVATE\\s+(?:ON|OFF)\\s*\\)\\s*$"
+            + r"\s+PRIVATE\s+(?:ON|OFF)\s*\)\s*$"
         )
         if pattern.search(options_text):
             options_text = pattern.sub(line, options_text)
@@ -59,7 +59,7 @@ def apply(source: Path) -> tuple[list[str], list[str]]:
     marker_index = options_text.rfind("WEBKIT_OPTION_END()")
     if marker_index < 0:
         raise ValueError("WEBKIT_OPTION_END() not found")
-    block = "\\n" + "\\n".join(body) + "\\n"
+    block = "\n" + "\n".join(body) + "\n"
     options_text = options_text[:marker_index] + block + options_text[marker_index:]
     opts.write_text(options_text, encoding="utf-8")
     return enabled, skipped
