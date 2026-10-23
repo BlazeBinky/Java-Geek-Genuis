@@ -131,6 +131,68 @@ def patch_date_trunc(root: Path) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+
+
+def patch_fast_malloc(root: Path) -> None:
+    path = root / "Source/WTF/wtf/FastMalloc.cpp"
+    text = path.read_text(encoding="utf-8")
+    if "#include <cstdlib>" not in text:
+        text = text.replace("#include <limits>\n", "#include <limits>\n#include <cstdlib>\n#include <stdint.h>\n", 1)
+    marker = "namespace WTF {\n\nbool isFastMallocEnabled()"
+    helpers = r"""namespace WTF {
+
+#if PLATFORM(MUI)
+static void* alignedAllocForMUI(size_t alignment, size_t size)
+{
+    if (alignment < sizeof(void*))
+        alignment = sizeof(void*);
+    if (!alignment || (alignment & (alignment - 1)))
+        return nullptr;
+    if (alignment > SIZE_MAX - sizeof(void*) || size > SIZE_MAX - alignment - sizeof(void*))
+        return nullptr;
+
+    void* base = std::malloc(size + alignment - 1 + sizeof(void*));
+    if (!base)
+        return nullptr;
+    uintptr_t address = reinterpret_cast<uintptr_t>(base) + sizeof(void*);
+    address = (address + alignment - 1) & ~(static_cast<uintptr_t>(alignment) - 1);
+    void* aligned = reinterpret_cast<void*>(address);
+    reinterpret_cast<void**>(aligned)[-1] = base;
+    return aligned;
+}
+
+static void freeAlignedForMUI(void* pointer)
+{
+    if (pointer)
+        std::free(reinterpret_cast<void**>(pointer)[-1]);
+}
+#endif
+
+bool isFastMallocEnabled()"""
+    if marker in text:
+        text = text.replace(marker, helpers, 1)
+    elif "static void* alignedAllocForMUI" not in text:
+        raise ValueError("FastMalloc helper insertion point not found")
+    text = text.replace(
+        "#if OS(AROS)\n    p = allocator_getmem_aligned(size, alignment);\n#else\n    posix_memalign(&p, alignment, size ? size : 2);\n#endif",
+        "#if OS(AROS)\n    p = allocator_getmem_aligned(size, alignment);\n#elif PLATFORM(MUI)\n    p = alignedAllocForMUI(alignment, size ? size : 2);\n#else\n    posix_memalign(&p, alignment, size ? size : 2);\n#endif",
+        1
+    )
+    text = text.replace(
+        "#if OS(AROS)\n    p = allocator_getmem_aligned(size, alignment);\n#else\n    posix_memalign(&p, alignment, size);\n#endif",
+        "#if OS(AROS)\n    p = allocator_getmem_aligned(size, alignment);\n#elif PLATFORM(MUI)\n    p = alignedAllocForMUI(alignment, size);\n#else\n    posix_memalign(&p, alignment, size);\n#endif",
+        1
+    )
+    # Match the paired allocator above on free.
+    needle = "#if OS(AROS)\n    allocator_freemem(p);\n#else\n    free(p);\n#endif"
+    replacement = "#if OS(AROS)\n    allocator_freemem(p);\n#elif PLATFORM(MUI)\n    freeAlignedForMUI(p);\n#else\n    free(p);\n#endif"
+    if needle in text:
+        text = text.replace(needle, replacement, 1)
+    elif replacement not in text:
+        raise ValueError("FastMalloc aligned free block not found")
+    path.write_text(text, encoding="utf-8")
+
+
 def main() -> int:
     if len(sys.argv) != 2:
         print(f"Usage: {Path(sys.argv[0]).name} UPSTREAM_SOURCE_DIR", file=sys.stderr)
@@ -150,6 +212,7 @@ def main() -> int:
         patch_siginfo_compat(root)
         patch_date_math(root)
         patch_date_trunc(root)
+        patch_fast_malloc(root)
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
