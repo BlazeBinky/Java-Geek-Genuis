@@ -117,6 +117,20 @@ def patch_date_math(root: Path) -> None:
     path.write_text(text.replace(anchor, anchor + "#include <cmath>\n", 1), encoding="utf-8")
 
 
+
+
+def patch_date_trunc(root: Path) -> None:
+    path = root / "Source/WTF/wtf/DateMath.cpp"
+    text = path.read_text(encoding="utf-8")
+    old = "    return std::trunc(t) + 0.0;"
+    new = "    return (t < 0 ? std::ceil(t) : std::floor(t)) + 0.0;"
+    if old in text:
+        text = text.replace(old, new, 1)
+    elif new not in text:
+        raise ValueError("unexpected timeClip implementation in DateMath.cpp")
+    path.write_text(text, encoding="utf-8")
+
+
 def main() -> int:
     if len(sys.argv) != 2:
         print(f"Usage: {Path(sys.argv[0]).name} UPSTREAM_SOURCE_DIR", file=sys.stderr)
@@ -135,6 +149,7 @@ def main() -> int:
         patch_build_script(build_script)
         patch_siginfo_compat(root)
         patch_date_math(root)
+        patch_date_trunc(root)
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
