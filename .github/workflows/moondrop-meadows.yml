@@ -1,0 +1,26 @@
+name: MoonDrop Meadows build
+
+on:
+  push:
+    branches: [ "feature/moondrop-meadows-foundation" ]
+    paths:
+      - "MoonDropMeadows_GPT/**"
+      - ".github/workflows/moondrop-meadows.yml"
+  pull_request:
+    paths:
+      - "MoonDropMeadows_GPT/**"
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore
+        run: dotnet restore MoonDropMeadows_GPT/MoonDropMeadows.csproj
+      - name: Build
+        run: dotnet build MoonDropMeadows_GPT/MoonDropMeadows.csproj --configuration Release --no-restore
