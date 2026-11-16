@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>MoonDropMeadows</AssemblyName>
+    <RootNamespace>MoonDropMeadows</RootNamespace>
+    <ApplicationTitle>MoonDrop Meadows</ApplicationTitle>
+    <Description>A pixel-art life sandbox about growing up, building a home, and changing a town.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.6.1" />
+  </ItemGroup>
+</Project>
