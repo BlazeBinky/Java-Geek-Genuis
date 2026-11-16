@@ -71,6 +71,7 @@ public sealed class Game1 : Game
     {
         var keyboard = Keyboard.GetState();
         float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        gameTimeSafeDelta = dt;
         if (toastTimer > 0) toastTimer -= dt;
         if (panelTitle.Length > 0) UpdatePanel(keyboard);
         else if (characterSetup) UpdateCreation(keyboard);
